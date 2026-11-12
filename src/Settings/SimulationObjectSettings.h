@@ -23,4 +23,11 @@ public:
     DEFINE_SETTINGFACT(completedRetentionMs)
     DEFINE_SETTINGFACT(staleTimeoutMs)
     DEFINE_SETTINGFACT(removalTimeoutMs)
+    DEFINE_SETTINGFACT(trailEnabled)
+    DEFINE_SETTINGFACT(trailLifetimeSec)
+    DEFINE_SETTINGFACT(trailStyle)
+    DEFINE_SETTINGFACT(trailColor)
+    DEFINE_SETTINGFACT(trailWidth)
+    DEFINE_SETTINGFACT(trailOpacity)
+    DEFINE_SETTINGFACT(trailClearWhenStopped)
 };

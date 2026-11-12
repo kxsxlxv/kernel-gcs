@@ -60,6 +60,8 @@ target_sources(
         StandardModesTest.h
         TrajectoryPointsTest.cc
         TrajectoryPointsTest.h
+        MapTrailHistoryTest.cc
+        MapTrailHistoryTest.h
         VehicleAirborneTest.cc
         VehicleAirborneTest.h
         VehicleDistanceSensorFactGroupTest.cc
@@ -118,6 +120,7 @@ add_qgc_test(SetEstimatorOriginTest LABELS Integration Vehicle)
 add_qgc_test(SetHomeTest LABELS Integration Vehicle)
 add_qgc_test(StandardModesTest LABELS Integration Vehicle)
 add_qgc_test(TrajectoryPointsTest LABELS Unit Vehicle)
+add_qgc_test(MapTrailHistoryTest LABELS Unit)
 add_qgc_test(VehicleAirborneTest LABELS Integration Vehicle)
 add_qgc_test(VehicleDistanceSensorFactGroupTest LABELS Integration Vehicle)
 add_qgc_test(VehicleFirmwareUpdateTest LABELS Integration Vehicle)

@@ -9,6 +9,9 @@ qt_add_qml_module(FlightMapModule
     URI QGroundControl.FlightMap
     VERSION 1.0
     RESOURCE_PREFIX /qml
+    SOURCES
+        MapTrailHistory.h
+        MapTrailHistory.cc
     QML_FILES
         MapItems/ADSBVehicleMapItem.qml
         MapItems/CameraTriggerIndicator.qml
@@ -101,3 +104,5 @@ qt_add_resources(${CMAKE_PROJECT_NAME} flightmap_qmlimages
         "${CMAKE_SOURCE_DIR}/src/FlightMap/Images/ZoomMinus.svg"
         "${CMAKE_SOURCE_DIR}/src/FlightMap/Images/ZoomPlus.svg"
 )
+
+target_link_libraries(FlightMapModule PRIVATE Qt6::Positioning)

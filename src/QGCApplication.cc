@@ -9,6 +9,7 @@
 #include <QtGui/QIcon>
 #include <QtQml/QQmlApplicationEngine>
 #include <QtQml/QQmlContext>
+#include <QtQml/qqml.h>
 #include <QtQuick/QQuickImageProvider>
 #include <QtQuick/QQuickWindow>
 #include <QtQuickControls2/QQuickStyle>
@@ -24,6 +25,7 @@
 #include "JsonParsing.h"
 #include "LinkManager.h"
 #include "LogManager.h"
+#include "FlightMap/MapTrailHistory.h"
 #include "MAVLinkProtocol.h"
 #include "MavlinkSettings.h"
 #include "MultiVehicleManager.h"
@@ -228,6 +230,10 @@ QGCApplication::~QGCApplication() {}
 
 void QGCApplication::init()
 {
+    // FlightMapModule is a static QML module with NO_PLUGIN: the linker can
+    // discard QML_ELEMENT's generated registrar. Explicitly register this
+    // visual history type before QML or unit tests use the module.
+    qmlRegisterType<MapTrailHistory>("QGroundControl.FlightMap", 1, 0, "MapTrailHistory");
     SettingsManager::instance()->init();
     if (_systemId > 0) {
         qCDebug(QGCApplicationLog) << "Setting MAVLink System ID to:" << _systemId;

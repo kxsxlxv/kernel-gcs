@@ -17,4 +17,11 @@ public:
     DEFINE_SETTINGFACT(mapProvider)
     DEFINE_SETTINGFACT(mapType)
     DEFINE_SETTINGFACT(elevationMapProvider)
+    DEFINE_SETTINGFACT(vehicleTrailEnabled)
+    DEFINE_SETTINGFACT(vehicleTrailLifetimeSec)
+    DEFINE_SETTINGFACT(vehicleTrailStyle)
+    DEFINE_SETTINGFACT(vehicleTrailColor)
+    DEFINE_SETTINGFACT(vehicleTrailWidth)
+    DEFINE_SETTINGFACT(vehicleTrailOpacity)
+    DEFINE_SETTINGFACT(vehicleTrailClearWhenStopped)
 };

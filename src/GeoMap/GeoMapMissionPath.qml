@@ -392,6 +392,7 @@ GeoMapItem {
                     property real screenFactor: root._screenFactor
                     property color pathColor: root.lineColor
                     property color highlightColor: root.collisionColor
+                    property real trailStyle: 0.0
                     property real pathOpacity: root.node3DOpacity
                     // Ramps in as the terrain flattens, effectively disabling
                     // depth testing in 2D mode (see flightpath.vert)

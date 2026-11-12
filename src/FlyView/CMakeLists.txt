@@ -30,6 +30,7 @@ qt_add_qml_module(
         FlyViewGripperDropPanel.qml
         FlyViewMap.qml
         SimulationObjectMapItem.qml
+        MapTrailCanvas.qml
         SimulationObjectGeoMapItem.qml
         SimulationObjectMarker.qml
         SimulationTelemetryStatus.qml

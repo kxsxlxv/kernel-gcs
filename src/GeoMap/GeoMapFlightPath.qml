@@ -1,57 +1,59 @@
-/****************************************************************************
- *
- * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
- *
- * QGroundControl is licensed according to the terms in the file
- * COPYING.md in the root of the source code directory.
- *
- ****************************************************************************/
-
 import QtQuick
 import QtQuick3D
 import QtPositioning
 
 import QGroundControl
 import QGroundControl.Controls
+import QGroundControl.FlightMap
 import QGroundControl.GeoMap
 
-/// Vehicle flight-path trail for the GeoMap: a red 3D ribbon in the scene at
-/// true flight altitude, depth-tested so terrain occludes it. Width stays
-/// constant in screen pixels via vertex-shader expansion. Stays visible in 2D
-/// mode (crossfade3D off): the altitude offsets flatten with terrainScale so
-/// it renders as the classic flat trail line. Altitudes get the same
-/// DEM-vs-home-AMSL bias correction as GeoMapVehicleItem, applied at the
-/// anchor so the whole trail shifts with it.
+/// Shared time-window history, rendered as a terrain-aware GeoMap 2D/3D ribbon.
 GeoMapItem {
     id: root
 
     property var vehicle
-    property real lineWidth: ScreenTools.defaultFontPixelHeight / 5
-    property color lineColor: "red"
+    property var simulationObject
+    property real simulationHomeTerrainBias: 0
+
+    readonly property bool _simulated: !!simulationObject
+    readonly property var _sourceObject: simulationObject ? simulationObject : vehicle
+    readonly property var _settings: _simulated
+        ? QGroundControl.settingsManager.simulationObjectSettings
+        : QGroundControl.settingsManager.flightMapSettings
+    readonly property bool _enabled: _simulated
+        ? _settings.trailEnabled.rawValue : _settings.vehicleTrailEnabled.rawValue
+    readonly property int _lifetimeMs: Number(_simulated
+        ? _settings.trailLifetimeSec.rawValue : _settings.vehicleTrailLifetimeSec.rawValue) * 1000
+    readonly property string _style: String(_simulated
+        ? _settings.trailStyle.rawValue : _settings.vehicleTrailStyle.rawValue)
+    readonly property color lineColor: _simulated
+        ? _settings.trailColor.rawValue : _settings.vehicleTrailColor.rawValue
+    readonly property real lineWidth: Number(_simulated
+        ? _settings.trailWidth.rawValue : _settings.vehicleTrailWidth.rawValue)
+    readonly property real lineOpacity: Number(_simulated
+        ? _settings.trailOpacity.rawValue : _settings.vehicleTrailOpacity.rawValue)
+    readonly property bool clearWhenStopped: _simulated
+        ? _settings.trailClearWhenStopped.rawValue : _settings.vehicleTrailClearWhenStopped.rawValue
+    readonly property bool hasAmslAltitude: !_simulated || (simulationObject.altitudeDatum === "AMSL_EGM96")
+    readonly property real _bias: _simulated
+        ? (hasAmslAltitude ? simulationHomeTerrainBias : 0) : _homeTerrainBias
 
     altitudeMode: GeoMapItem.Absolute
     crossfade3D: false
     coordinate: {
-        if (!_geometry || !_geometry.anchorCoordinate.isValid) {
+        if (!root._geometry || !root._geometry.anchorCoordinate.isValid) {
             return QtPositioning.coordinate()
         }
-        const anchor = _geometry.anchorCoordinate
-        return QtPositioning.coordinate(anchor.latitude, anchor.longitude, anchor.altitude + _homeTerrainBias)
+        const anchor = root._geometry.anchorCoordinate
+        return QtPositioning.coordinate(anchor.latitude, anchor.longitude, anchor.altitude + root._bias)
     }
-    visible: !!vehicle
+    visible: !!_sourceObject && _enabled && _style !== "none" && lineOpacity > 0
+             && trailHistory.count >= 2
+    node3DOpacity: 1
 
-    // The geometry lives inside the 3D delegate (created/destroyed with the
-    // scene); this bridges its anchor out for the coordinate binding above
     property var _geometry: null
-
     readonly property var _camera: scene ? scene.camera : null
-
-    // Pixel-to-scene-unit factor at unit distance; the shader scales it by
-    // each vertex's own camera distance
     readonly property real _screenFactor: _camera ? _camera.unitsPerPixelAtUnitDistance : 0
-
-    // DEM height minus vehicle-reported AMSL, sampled at home (same
-    // correction as GeoMapVehicleItem so trail and marker stay aligned)
     property real _homeTerrainBias: 0
 
     function _updateHomeTerrainBias() {
@@ -62,46 +64,130 @@ GeoMapItem {
         }
     }
 
+    function _stopped() {
+        if (!_sourceObject) {
+            return false
+        }
+        return _simulated
+            ? (_sourceObject.motionState === "stationary" || _sourceObject.motionState === "paused")
+            : (_sourceObject.groundSpeed && Number(_sourceObject.groundSpeed.rawValue) < 0.5)
+    }
+
+    function _applyStopPolicy() {
+        if (clearWhenStopped && _stopped()) {
+            trailHistory.clear()
+        }
+    }
+
+    function _record() {
+        if (!_sourceObject || (_simulated && !_sourceObject.positionValid)) {
+            return
+        }
+        _applyStopPolicy()
+        if (!(clearWhenStopped && _stopped())) {
+            trailHistory.append(_sourceObject.coordinate)
+        }
+    }
+
+    function _displayCoordinates() {
+        const coordinates = trailHistory.coordinates()
+        if (hasAmslAltitude) {
+            return coordinates
+        }
+        // No ellipsoid-to-AMSL conversion exists: keep this non-AMSL path ground-clamped.
+        const clamped = []
+        for (let i = 0; i < coordinates.length; ++i) {
+            const point = coordinates[i]
+            const height = surfaceModel ? surfaceModel.terrainHeightAt(point) : 0
+            clamped.push(QtPositioning.coordinate(point.latitude, point.longitude,
+                         isFinite(height) ? height : 0))
+        }
+        return clamped
+    }
+
     function _reloadPath() {
         if (_geometry) {
-            _geometry.setPath(vehicle ? vehicle.trajectoryPoints.list() : [])
+            _geometry.setPath(_displayCoordinates(), [],
+                              _style === "fading" ? trailHistory.fadeFactors() : [])
         }
     }
 
     onVehicleChanged: {
+        trailHistory.clear()
         _updateHomeTerrainBias()
-        _reloadPath()
+        _record()
     }
-    onSurfaceModelChanged: _updateHomeTerrainBias()
+    onSimulationObjectChanged: {
+        trailHistory.clear()
+        _record()
+    }
+    onSurfaceModelChanged: {
+        _updateHomeTerrainBias()
+        if (!hasAmslAltitude) _reloadPath()
+    }
+    onClearWhenStoppedChanged: _applyStopPolicy()
+    onHasAmslAltitudeChanged: _reloadPath()
+    Component.onCompleted: _record()
+
+    MapTrailHistory {
+        id: trailHistory
+        enabled: root._enabled && root._style !== "none"
+        lifetimeMs: root._lifetimeMs
+        onPointAppended: (coordinate) => {
+            if (root._geometry) {
+                if (root.hasAmslAltitude) {
+                    root._geometry.appendPoint(coordinate)
+                } else {
+                    root._reloadPath()
+                }
+            }
+        }
+        onPathRebuilt: root._reloadPath()
+        onFadingChanged: {
+            if (root._style === "fading") {
+                root._reloadPath()
+            }
+        }
+    }
+
+    Connections {
+        target: root._sourceObject
+        ignoreUnknownSignals: true
+        function onCoordinateChanged() { root._record() }
+        function onChanged() { root._record() }
+    }
+
+    Connections {
+        target: root._simulated || !root.vehicle ? null : root.vehicle.groundSpeed
+        ignoreUnknownSignals: true
+        function onRawValueChanged() { root._applyStopPolicy() }
+    }
 
     delegate3D: Component {
-        // z offsets are relative altitudes; flatten them with the terrain
-        // during the 2D<->3D transition (anchor z already tracks terrainScale
-        // through GeoMapItem)
         Node {
             scale: Qt.vector3d(1, 1, root.scene ? root.scene.terrainScale : 1)
 
             Model {
                 geometry: FlightPathGeometry {
                     id: pathGeometry
-
                     scene: root.scene
                 }
 
                 materials: CustomMaterial {
                     shadingMode: CustomMaterial.Unshaded
                     cullMode: Material.NoCulling
+                    sourceBlend: CustomMaterial.SrcAlpha
+                    destinationBlend: CustomMaterial.OneMinusSrcAlpha
                     vertexShader: "shaders/flightpath.vert"
                     fragmentShader: "shaders/flightpath.frag"
 
                     property real lineWidth: root.lineWidth
                     property real screenFactor: root._screenFactor
                     property color pathColor: root.lineColor
-                    // Required by flightpath.frag; the trail never highlights
                     property color highlightColor: root.lineColor
-                    property real pathOpacity: 1.0
-                    // Ramps in as the terrain flattens, effectively disabling
-                    // depth testing in 2D mode (see flightpath.vert)
+                    property real pathOpacity: root.lineOpacity
+                    property real trailStyle: root._style === "dashed" ? 1.0
+                        : root._style === "dotted" ? 2.0 : root._style === "fading" ? 3.0 : 0.0
                     property real depthPull: root.scene ? 0.5 * (1.0 - root.scene.terrainScale) : 0.0
                 }
 
@@ -111,30 +197,19 @@ GeoMapItem {
                 }
                 Component.onDestruction: root._geometry = null
             }
-
-            Connections {
-                target: root.vehicle ? root.vehicle.trajectoryPoints : null
-
-                function onPointAdded(coordinate) { pathGeometry.appendPoint(coordinate) }
-                function onUpdateLastPoint(coordinate) { pathGeometry.updateLastPoint(coordinate) }
-                function onPointsCleared() { pathGeometry.clearPath() }
-            }
         }
     }
 
     Connections {
         target: root.surfaceModel
-
         function onTerrainDataChanged() {
             root._updateHomeTerrainBias()
+            if (!root.hasAmslAltitude) root._reloadPath()
         }
     }
 
     Connections {
         target: root.vehicle
-
-        function onHomePositionChanged() {
-            root._updateHomeTerrainBias()
-        }
+        function onHomePositionChanged() { root._updateHomeTerrainBias() }
     }
 }

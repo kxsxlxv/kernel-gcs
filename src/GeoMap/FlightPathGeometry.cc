@@ -15,6 +15,7 @@
 #include <QtCore/qnumeric.h>
 #include <QtGui/QVector3D>
 
+#include <algorithm>
 #include <cmath>
 
 #include "GeoScene.h"
@@ -47,17 +48,22 @@ void FlightPathGeometry::setScene(GeoScene* scene)
     _rebuild();
 }
 
-void FlightPathGeometry::setPath(const QVariantList& coordinates, const QVariantList& highlights)
+void FlightPathGeometry::setPath(const QVariantList& coordinates, const QVariantList& highlights,
+                                 const QVariantList& fades)
 {
     _points.clear();
     _highlights.clear();
+    _fadeFactors.clear();
     _points.reserve(coordinates.size());
     _highlights.reserve(coordinates.size());
+    _fadeFactors.reserve(coordinates.size());
     for (qsizetype i = 0; i < coordinates.size(); i++) {
         const QGeoCoordinate coordinate = coordinates[i].value<QGeoCoordinate>();
         if (coordinate.isValid()) {
             _points.append(coordinate);
             _highlights.append((i < highlights.size()) && highlights[i].toBool());
+            const double fade = i < fades.size() ? fades[i].toDouble() : 1.0;
+            _fadeFactors.append(std::isfinite(fade) ? static_cast<float>(std::clamp(fade, 0.0, 1.0)) : 1.0f);
         }
     }
     emit anchorCoordinateChanged();
@@ -72,6 +78,7 @@ void FlightPathGeometry::appendPoint(const QGeoCoordinate& coordinate)
     }
     _points.append(coordinate);
     _highlights.append(false);
+    _fadeFactors.append(1.0f);
     if (_points.size() == 1) {
         emit anchorCoordinateChanged();
     }
@@ -85,6 +92,7 @@ void FlightPathGeometry::appendPoint(const QGeoCoordinate& coordinate)
     const qsizetype last = _points.size() - 1;
     _positions.append(_positionFor(coordinate));
     _segmentDirections.append(_segmentDirection(last - 1));
+    _pathDistances.append(_pathDistances.last() + (_positions.last() - _positions[last - 1]).length());
     _vertexData.resize(_vertexData.size() + (2 * kFloatsPerVertex * static_cast<qsizetype>(sizeof(float))));
     _writeVertexPair(last - 1, _tangentAt(last - 1));
     _writeVertexPair(last, _tangentAt(last));
@@ -112,6 +120,7 @@ void FlightPathGeometry::updateLastPoint(const QGeoCoordinate& coordinate)
     const qsizetype last = _points.size() - 1;
     _positions.last() = _positionFor(coordinate);
     _segmentDirections.last() = _segmentDirection(last - 1);
+    _pathDistances.last() = _pathDistances[last - 1] + (_positions.last() - _positions[last - 1]).length();
     _writeVertexPair(last - 1, _tangentAt(last - 1));
     _writeVertexPair(last, _tangentAt(last));
     _growBounds(_positions.last());  // grow-only: bounds stay conservative if the point retreats
@@ -129,6 +138,8 @@ void FlightPathGeometry::clearPath()
     }
     _points.clear();
     _highlights.clear();
+    _fadeFactors.clear();
+    _pathDistances.clear();
     emit anchorCoordinateChanged();
     emit pointCountChanged();
     _rebuild();
@@ -138,6 +149,7 @@ void FlightPathGeometry::_rebuild()
 {
     _positions.clear();
     _segmentDirections.clear();
+    _pathDistances.clear();
     _vertexData.clear();
 
     if (!_scene || (_points.size() < 2)) {
@@ -153,6 +165,12 @@ void FlightPathGeometry::_rebuild()
     _positions.reserve(_points.size());
     for (const QGeoCoordinate& point : _points) {
         _positions.append(_positionFor(point));
+    }
+
+    _pathDistances.reserve(_positions.size());
+    _pathDistances.append(0.0f);
+    for (qsizetype i = 1; i < _positions.size(); ++i) {
+        _pathDistances.append(_pathDistances.last() + (_positions[i] - _positions[i - 1]).length());
     }
 
     _segmentDirections.reserve(_positions.size() - 1);
@@ -175,6 +193,8 @@ void FlightPathGeometry::_rebuild()
     addAttribute(QQuick3DGeometry::Attribute::PositionSemantic, 0, QQuick3DGeometry::Attribute::F32Type);
     addAttribute(QQuick3DGeometry::Attribute::NormalSemantic, 3 * sizeof(float), QQuick3DGeometry::Attribute::F32Type);
     addAttribute(QQuick3DGeometry::Attribute::TexCoord0Semantic, 6 * sizeof(float),
+                 QQuick3DGeometry::Attribute::F32Type);
+    addAttribute(QQuick3DGeometry::Attribute::TexCoord1Semantic, 8 * sizeof(float),
                  QQuick3DGeometry::Attribute::F32Type);
     setBounds(_minBounds, _maxBounds);
     update();
@@ -235,6 +255,8 @@ void FlightPathGeometry::_writeVertexPair(qsizetype index, const QVector3D& tang
         *vertex++ = tangent.z();
         *vertex++ = side;
         *vertex++ = highlight;
+        *vertex++ = _pathDistances[index];
+        *vertex++ = _fadeFactors[index];
     }
 }
 

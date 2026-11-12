@@ -11,6 +11,7 @@ private slots:
     void _ribbonLayout();
     void _directionsAndSides();
     void _highlightFlags();
+    void _trailFadeAndDistances();
     void _pathMutations();
     void _incrementalMatchesRebuild();
 };
