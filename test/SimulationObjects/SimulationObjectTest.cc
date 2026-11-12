@@ -357,7 +357,10 @@ void SimulationObjectTest::_receiverStatus()
     QVERIFY(manager.acceptDatagram(packet(state(kSession1, 2)), QHostAddress(QHostAddress::LocalHost)));
     QCOMPARE(manager.receiverStatus(), QStringLiteral("receiving"));
 
+    expectLogMessage("SimulationObjects.Manager", QtWarningMsg,
+                     QRegularExpression(QStringLiteral("^Invalid simulation receiver endpoint or source configuration$")));
     allowedSender->setRawValue(QStringLiteral("invalid-ip"));
+    verifyExpectedLogMessage();
     QCOMPARE(manager.receiverStatus(), QStringLiteral("error"));
     allowedSender->setRawValue(QStringLiteral("127.0.0.1"));
     QCOMPARE(manager.receiverStatus(), QStringLiteral("listening"));
