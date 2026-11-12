@@ -45,6 +45,54 @@ void MapTrailHistoryTest::_stationaryAndResume()
     QCOMPARE(history.coordinates().size(), 2);
 }
 
+void MapTrailHistoryTest::_liveLifetimeChange()
+{
+    MapTrailHistory history;
+    history.setLifetimeMs(0);
+    history.appendAt(kOrigin, 0);
+    history.appendAt(kOrigin.atDistanceAndAzimuth(10, 90), 200);
+    history.appendAt(kOrigin.atDistanceAndAzimuth(20, 90), 400);
+    QCOMPARE(history.count(), 3);
+
+    history.setLifetimeMs(1000);
+    history.expireAt(1500);
+    QCOMPARE(history.count(), 0);
+    history.appendAt(kOrigin.atDistanceAndAzimuth(30, 90), 1700);
+    history.appendAt(kOrigin.atDistanceAndAzimuth(40, 90), 1900);
+    QCOMPARE(history.count(), 2);
+
+    history.clear();
+    QCOMPARE(history.count(), 0);
+    history.appendAt(kOrigin, 2000);
+    QCOMPARE(history.count(), 1);
+}
+
+void MapTrailHistoryTest::_independentHistories()
+{
+    MapTrailHistory vehicle;
+    MapTrailHistory simulation;
+    vehicle.setLifetimeMs(1000);
+    simulation.setLifetimeMs(5000);
+
+    vehicle.appendAt(kOrigin, 0);
+    vehicle.appendAt(kOrigin.atDistanceAndAzimuth(20, 90), 200);
+    simulation.appendAt(kOrigin, 0);
+    simulation.appendAt(kOrigin.atDistanceAndAzimuth(30, 0), 200);
+
+    vehicle.expireAt(1500);
+    simulation.expireAt(1500);
+    QCOMPARE(vehicle.count(), 0);
+    QCOMPARE(simulation.count(), 2);
+
+    vehicle.appendAt(kOrigin, 1600);
+    QCOMPARE(vehicle.count(), 1);
+    QCOMPARE(simulation.count(), 2);
+
+    simulation.clear();
+    QCOMPARE(simulation.count(), 0);
+    QCOMPARE(vehicle.count(), 1);
+}
+
 void MapTrailHistoryTest::_limitsAndDisable()
 {
     MapTrailHistory history;
