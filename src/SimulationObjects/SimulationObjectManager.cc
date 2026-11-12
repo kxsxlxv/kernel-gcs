@@ -36,6 +36,7 @@ void SimulationObject::_apply(const SimulationObjectProtocol::Packet& packet, qi
     _targetValid = packet.targetValid;
     // The old coordinate may remain for last-known display, but is never marked current.
     _positionValid = packet.positionValid;
+    _altitudeDatum = packet.positionValid ? packet.altitudeDatum : QString();
     if (packet.positionValid) {
         _coordinate = packet.position;
     }

@@ -168,6 +168,50 @@ void SimulationObjectTest::_identityAndLifecycle()
     QVERIFY(manager.objectFor(kSession2, 1, QStringLiteral("missile-1"), 1));
 }
 
+void SimulationObjectTest::_mapProjectionMetadata()
+{
+    auto* settings = SettingsManager::instance()->simulationObjectSettings();
+    Fact* const enabled = settings->enabled();
+    const QVariant original = enabled->rawValue();
+    const auto restore = qScopeGuard([enabled, original]() { enabled->setRawValue(original); });
+    enabled->setRawValue(true);
+    SimulationObjectManager manager(settings);
+    const QHostAddress peer(QHostAddress::LocalHost);
+
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession1)), peer));
+    QVERIFY(manager.acceptDatagram(packet(state(kSession1, 1)), peer));
+    SimulationObject* const missile = manager.objectFor(kSession1, 1, QStringLiteral("missile-1"), 1);
+    QVERIFY(missile);
+    QCOMPARE(missile->kind(), QStringLiteral("missile"));
+    QVERIFY(missile->positionValid());
+    QCOMPARE(missile->altitudeDatum(), QStringLiteral("AMSL_EGM96"));
+
+    QJsonObject ellipsoidState = state(kSession1, 2);
+    QJsonObject position = ellipsoidState.value(QStringLiteral("position")).toObject();
+    position.insert(QStringLiteral("altitude_datum"), QStringLiteral("WGS84_ELLIPSOID"));
+    ellipsoidState.insert(QStringLiteral("position"), position);
+    QVERIFY(manager.acceptDatagram(packet(ellipsoidState), peer));
+    QCOMPARE(missile->altitudeDatum(), QStringLiteral("WGS84_ELLIPSOID"));
+
+    QJsonObject missingPosition = state(kSession1, 3);
+    missingPosition.insert(QStringLiteral("position"), QJsonValue::Null);
+    QVERIFY(manager.acceptDatagram(packet(missingPosition), peer));
+    QVERIFY(!missile->positionValid());
+    QVERIFY(missile->altitudeDatum().isEmpty());
+    // Coordinates are retained internally as last-known, never presented as a fresh position.
+    QVERIFY(missile->coordinate().isValid());
+
+    QJsonObject npcState = state(kSession1, 1, QStringLiteral("npc-1"));
+    QJsonObject npc = npcState.value(QStringLiteral("object")).toObject();
+    npc.insert(QStringLiteral("kind"), QStringLiteral("npc"));
+    npcState.insert(QStringLiteral("object"), npc);
+    QVERIFY(manager.acceptDatagram(packet(npcState), peer));
+    SimulationObject* const npcObject = manager.objectFor(kSession1, 1, QStringLiteral("npc-1"), 1);
+    QVERIFY(npcObject);
+    QCOMPARE(npcObject->kind(), QStringLiteral("npc"));
+    QVERIFY(npcObject->positionValid());
+}
+
 void SimulationObjectTest::_staleAndDisconnect()
 {
     auto* settings = SettingsManager::instance()->simulationObjectSettings();

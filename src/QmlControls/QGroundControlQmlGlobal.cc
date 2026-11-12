@@ -18,6 +18,7 @@
 #include "QGCMapEngineManager.h"
 #include "QGCVersionCheck.h"
 #include "SettingsManager.h"
+#include "SimulationObjectManager.h"
 #include "VideoManager.h"
 #ifndef QGC_NO_SERIAL_LINK
 #include "SerialPortManager.h"
@@ -88,6 +89,11 @@ QGroundControlQmlGlobal::QGroundControlQmlGlobal(QObject *parent)
 
 QGroundControlQmlGlobal::~QGroundControlQmlGlobal()
 {
+}
+
+QmlObjectListModel* QGroundControlQmlGlobal::simulationObjects() const
+{
+    return SimulationObjectManager::instance()->objects();
 }
 
 GPSManager* QGroundControlQmlGlobal::gpsManager() const

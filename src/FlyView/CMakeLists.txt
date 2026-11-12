@@ -29,6 +29,9 @@ qt_add_qml_module(
         FlyViewGripperButton.qml
         FlyViewGripperDropPanel.qml
         FlyViewMap.qml
+        SimulationObjectMapItem.qml
+        SimulationObjectGeoMapItem.qml
+        SimulationObjectMarker.qml
         FlyViewMapClickDropPanel.qml
         FlyViewMissionCompleteDialog.qml
         FlyViewOccluders.qml
