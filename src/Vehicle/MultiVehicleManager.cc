@@ -12,7 +12,6 @@
 #include "QGCOptions.h"
 #include "QmlObjectListModel.h"
 #include "SettingsManager.h"
-#include "SimulationObjectSettings.h"
 #include "Vehicle.h"
 #include "VehicleLinkManager.h"
 #ifdef Q_OS_IOS
@@ -130,13 +129,9 @@ void MultiVehicleManager::_vehicleHeartbeatInfo(LinkInterface* link, quint32 veh
 
     emit vehicleAdded(vehicle);
 
-    if (_vehicles->count() > 1) {
-        auto* const simSettings = SettingsManager::instance()->simulationObjectSettings();
-        if (!(simSettings->enabled()->rawValue().toBool() &&
-              simSettings->suppressVehicleConnectedPopups()->rawValue().toBool())) {
-            QGC::showAppMessage(tr("Connected to Vehicle %1").arg(vehicleId));
-        }
-    } else {
+    // Only the first vehicle becomes active automatically; connecting additional
+    // MAVLink vehicles does not require an informational modal dialog.
+    if (_vehicles->count() == 1) {
         setActiveVehicle(vehicle);
     }
 
