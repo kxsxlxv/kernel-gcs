@@ -32,11 +32,11 @@ GeoMapItem {
         ? _settings.trailWidth.rawValue : _settings.vehicleTrailWidth.rawValue)
     readonly property real lineOpacity: Number(_simulated
         ? _settings.trailOpacity.rawValue : _settings.vehicleTrailOpacity.rawValue)
-    readonly property bool _clearWhenStopped: _simulated
+    readonly property bool clearWhenStopped: _simulated
         ? _settings.trailClearWhenStopped.rawValue : _settings.vehicleTrailClearWhenStopped.rawValue
-    readonly property bool _hasAmslAltitude: !_simulated || (simulationObject.altitudeDatum === "AMSL_EGM96")
+    readonly property bool hasAmslAltitude: !_simulated || (simulationObject.altitudeDatum === "AMSL_EGM96")
     readonly property real _bias: _simulated
-        ? (_hasAmslAltitude ? simulationHomeTerrainBias : 0) : _homeTerrainBias
+        ? (hasAmslAltitude ? simulationHomeTerrainBias : 0) : _homeTerrainBias
 
     altitudeMode: GeoMapItem.Absolute
     crossfade3D: false
@@ -74,7 +74,7 @@ GeoMapItem {
     }
 
     function _applyStopPolicy() {
-        if (_clearWhenStopped && _stopped()) {
+        if (clearWhenStopped && _stopped()) {
             trailHistory.clear()
         }
     }
@@ -84,14 +84,14 @@ GeoMapItem {
             return
         }
         _applyStopPolicy()
-        if (!(_clearWhenStopped && _stopped())) {
+        if (!(clearWhenStopped && _stopped())) {
             trailHistory.append(_sourceObject.coordinate)
         }
     }
 
     function _displayCoordinates() {
         const coordinates = trailHistory.coordinates()
-        if (_hasAmslAltitude) {
+        if (hasAmslAltitude) {
             return coordinates
         }
         // No ellipsoid-to-AMSL conversion exists: keep this non-AMSL path ground-clamped.
@@ -123,10 +123,10 @@ GeoMapItem {
     }
     onSurfaceModelChanged: {
         _updateHomeTerrainBias()
-        if (!_hasAmslAltitude) _reloadPath()
+        if (!hasAmslAltitude) _reloadPath()
     }
-    on_ClearWhenStoppedChanged: _applyStopPolicy()
-    on_HasAmslAltitudeChanged: _reloadPath()
+    onClearWhenStoppedChanged: _applyStopPolicy()
+    onHasAmslAltitudeChanged: _reloadPath()
     Component.onCompleted: _record()
 
     MapTrailHistory {
@@ -135,7 +135,7 @@ GeoMapItem {
         lifetimeMs: root._lifetimeMs
         onPointAppended: (coordinate) => {
             if (root._geometry) {
-                if (root._hasAmslAltitude) {
+                if (root.hasAmslAltitude) {
                     root._geometry.appendPoint(coordinate)
                 } else {
                     root._reloadPath()
@@ -204,7 +204,7 @@ GeoMapItem {
         target: root.surfaceModel
         function onTerrainDataChanged() {
             root._updateHomeTerrainBias()
-            if (!root._hasAmslAltitude) root._reloadPath()
+            if (!root.hasAmslAltitude) root._reloadPath()
         }
     }
 

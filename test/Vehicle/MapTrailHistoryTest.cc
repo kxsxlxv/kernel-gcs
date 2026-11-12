@@ -2,6 +2,7 @@
 
 #include <QtPositioning/QGeoCoordinate>
 #include <QtTest/QSignalSpy>
+#include <QtQml/qqml.h>
 
 #include "../../src/FlightMap/MapTrailHistory.h"
 
@@ -112,4 +113,11 @@ void MapTrailHistoryTest::_limitsAndDisable()
     history.appendAt(kOrigin, 1000200);
     QCOMPARE(history.count(), 1);
 }
+void MapTrailHistoryTest::_qmlTypeRegistered()
+{
+    // Pure C++ history tests can pass even when its QML element was discarded
+    // by static-library linking. Keep a direct regression guard for registration.
+    QVERIFY(qmlTypeId("QGroundControl.FlightMap", 1, 0, "MapTrailHistory") >= 0);
+}
+
 UT_REGISTER_TEST(MapTrailHistoryTest, TestLabel::Unit)

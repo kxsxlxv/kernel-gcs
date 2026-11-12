@@ -12,4 +12,5 @@ private slots:
     void _liveLifetimeChange();
     void _independentHistories();
     void _limitsAndDisable();
+    void _qmlTypeRegistered();
 };

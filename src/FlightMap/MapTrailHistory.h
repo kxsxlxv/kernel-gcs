@@ -12,7 +12,6 @@
 class MapTrailHistory : public QObject
 {
     Q_OBJECT
-    QML_ELEMENT
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
     Q_PROPERTY(int lifetimeMs READ lifetimeMs WRITE setLifetimeMs NOTIFY lifetimeMsChanged)
     Q_PROPERTY(int count READ count NOTIFY changed)
