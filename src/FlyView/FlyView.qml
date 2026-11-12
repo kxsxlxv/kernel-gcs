@@ -135,6 +135,7 @@ Item {
             anchors.leftMargin:     _widgetMargin
             z:                      QGroundControl.zOrderWidgets + 1
             objectsModel:           QGroundControl.simulationObjects
+            receiver:               QGroundControl.simulationObjectManager
             visible:                _mainWindowIsMap && !QGroundControl.videoManager.fullScreen
                                     && QGroundControl.settingsManager.simulationObjectSettings.enabled.rawValue
         }

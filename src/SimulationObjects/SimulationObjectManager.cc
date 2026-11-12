@@ -107,6 +107,14 @@ void SimulationObjectManager::initialize()
     _restart();
 }
 
+void SimulationObjectManager::_setReceiverStatus(const QString& status)
+{
+    if (_receiverStatus != status) {
+        _receiverStatus = status;
+        emit receiverStatusChanged();
+    }
+}
+
 void SimulationObjectManager::_restart()
 {
     stop();
@@ -122,11 +130,13 @@ void SimulationObjectManager::_restart()
         !_allowedPeer.setAddress(_settings->allowedSender()->rawValue().toString()) ||
         _settings->producerId()->rawValue().toString().isEmpty()) {
         qCWarning(SimulationObjectLog) << "Invalid simulation receiver endpoint or source configuration";
+        _setReceiverStatus(QStringLiteral("error"));
         return;
     }
     const quint32 configuredPort = _settings->listenPort()->rawValue().toUInt();
     if (configuredPort < 1 || configuredPort > 65535) {
         qCWarning(SimulationObjectLog) << "Invalid simulation UDP port" << configuredPort;
+        _setReceiverStatus(QStringLiteral("error"));
         return;
     }
     _socket = new QUdpSocket(this);
@@ -134,10 +144,12 @@ void SimulationObjectManager::_restart()
         qCWarning(SimulationObjectLog) << "Unable to bind simulation UDP socket" << _socket->errorString();
         delete _socket;
         _socket = nullptr;
+        _setReceiverStatus(QStringLiteral("error"));
         return;
     }
     connect(_socket, &QUdpSocket::readyRead, this, &SimulationObjectManager::_receivePending);
     _cleanupTimer.start();
+    _setReceiverStatus(QStringLiteral("listening"));
     qCDebug(SimulationObjectLog) << "Simulation receiver listening" << bindAddress << configuredPort;
 }
 
@@ -152,6 +164,7 @@ void SimulationObjectManager::stop()
     _hasAnnouncement = false;
     _lastAnnouncementSeq = 0;
     _lastSourceReceiveMs = -1;
+    _setReceiverStatus(QStringLiteral("disabled"));
     _watermarks.clear();
     _retiredSessions.clear();
 }
@@ -241,6 +254,9 @@ bool SimulationObjectManager::acceptDatagram(const QByteArray& bytes, const QHos
             _lastAnnouncementSeq = packet.sessionSeq;
         }
         _lastSourceReceiveMs = now;
+        if (_socket) {
+            _setReceiverStatus(QStringLiteral("receiving"));
+        }
         return true;
     }
 
@@ -254,6 +270,9 @@ bool SimulationObjectManager::acceptDatagram(const QByteArray& bytes, const QHos
         _hasAnnouncement = false;
         _activeSession.clear();
         _lastSourceReceiveMs = now;
+        if (_socket) {
+            _setReceiverStatus(QStringLiteral("listening"));
+        }
         return true;
     }
 
@@ -275,6 +294,9 @@ bool SimulationObjectManager::acceptDatagram(const QByteArray& bytes, const QHos
     watermark->seq = packet.seq;
     watermark->simTimeNs = packet.simTimeNs;
     _lastSourceReceiveMs = now;
+    if (_socket) {
+        _setReceiverStatus(QStringLiteral("receiving"));
+    }
 
     SimulationObject* object = _entries.value(key);
     if (packet.message == SimulationObjectProtocol::Message::End) {
@@ -311,6 +333,9 @@ void SimulationObjectManager::expireAt(qint64 nowMs)
     const qint64 removal = std::max<qint64>(stale + 1, _settings->removalTimeoutMs()->rawValue().toLongLong());
     const qint64 retention = std::max<qint64>(0, _settings->completedRetentionMs()->rawValue().toLongLong());
     const bool sourceDisconnected = _lastSourceReceiveMs >= 0 && nowMs - _lastSourceReceiveMs >= stale;
+    if (_socket && _hasAnnouncement && sourceDisconnected) {
+        _setReceiverStatus(QStringLiteral("stale"));
+    }
     for (int i = _objects->count() - 1; i >= 0; --i) {
         auto* object = qobject_cast<SimulationObject*>(_objects->get(i));
         if (!object) {

@@ -22,6 +22,7 @@ class QGCPalette;
 class SettingsManager;
 class VideoManager;
 class QmlObjectListModel;
+class SimulationObjectManager;
 
 Q_MOC_INCLUDE("ADSBVehicleManager.h")
 Q_MOC_INCLUDE("GPSManager.h")
@@ -35,6 +36,7 @@ Q_MOC_INCLUDE("QGCCorePlugin.h")
 Q_MOC_INCLUDE("QGCMapEngineManager.h")
 Q_MOC_INCLUDE("QGCPalette.h")
 Q_MOC_INCLUDE("SettingsManager.h")
+Q_MOC_INCLUDE("SimulationObjectManager.h")
 Q_MOC_INCLUDE("VideoManager.h")
 
 class QGroundControlQmlGlobal : public QObject
@@ -69,6 +71,7 @@ public:
     Q_PROPERTY(SettingsManager*     settingsManager         READ    settingsManager         CONSTANT)
     Q_PROPERTY(ADSBVehicleManager*  adsbVehicleManager      READ    adsbVehicleManager      CONSTANT)
     Q_PROPERTY(QmlObjectListModel*  simulationObjects       READ    simulationObjects       CONSTANT)
+    Q_PROPERTY(SimulationObjectManager* simulationObjectManager READ simulationObjectManager CONSTANT)
     Q_PROPERTY(QGCCorePlugin*       corePlugin              READ    corePlugin              CONSTANT)
     Q_PROPERTY(MissionCommandTree*  missionCommandTree      READ    missionCommandTree      CONSTANT)
     Q_PROPERTY(MAVLinkSigningKeys*   mavlinkSigningKeys      READ    mavlinkSigningKeys      CONSTANT)
@@ -174,6 +177,7 @@ public:
     ADSBVehicleManager* adsbVehicleManager() { return _adsbVehicleManager; }
 
     QmlObjectListModel* simulationObjects() const;
+    SimulationObjectManager* simulationObjectManager() const;
 
     QmlUnitsConversion* unitsConversion() { return &_unitsConversion; }
 
