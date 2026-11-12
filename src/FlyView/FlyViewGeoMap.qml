@@ -147,6 +147,18 @@ GeoMapView {
         }
     }
 
+    // Simulation-only missiles, not selectable MAVLink vehicles.
+    Repeater {
+        model: QGroundControl.simulationObjects
+
+        SimulationObjectGeoMapItem {
+            simulationObject: object
+            scene: root.scene
+            surfaceModel: root.surfaceModel
+            homeTerrainBias: root._activeVehicleHomeTerrainBias
+        }
+    }
+
     GeoMapFlightPath {
         scene: root.scene
         surfaceModel: root.surfaceModel

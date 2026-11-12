@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic Phase 1 simulation-object fixture; sends only telemetry, never commands."""
+"""Simulation-only telemetry fixture; never sends commands or MAVLink missiles."""
 import argparse
 import json
 import math
@@ -16,11 +16,11 @@ def identity(seed, label):
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, f"kernel-gcs:{seed}:{label}"))
 
 
-def location(north, east, altitude):
+def location(north, east, altitude, center_lat=LAT, center_lon=LON):
     return {
         "frame": "WGS84_GEODETIC",
-        "lat_deg": LAT + north / 111_320.0,
-        "lon_deg": LON + east / (111_320.0 * math.cos(math.radians(LAT))),
+        "lat_deg": center_lat + north / 111_320.0,
+        "lon_deg": center_lon + east / (111_320.0 * math.cos(math.radians(center_lat))),
         "altitude_m": altitude,
         "altitude_datum": "AMSL_EGM96",
     }
@@ -51,7 +51,7 @@ def envelope(seed, t, epoch, message):
     }
 
 
-def object_state(seed, t, epoch, name, seq):
+def object_state(seed, t, epoch, name, seq, center_lat=LAT, center_lon=LON):
     local = t if epoch == 1 else t - 30
     missile = name.startswith("missile")
     packet = envelope(seed, t, epoch, "state")
@@ -59,7 +59,8 @@ def object_state(seed, t, epoch, name, seq):
     if missile:
         number = 2 if name.endswith("2") else 1
         pos = location(-1200 + vn * local * (1 if number == 1 else 0.6),
-                       -500 + ve * local * (1 if number == 1 else -0.6), 360 + number * 30)
+                       -500 + ve * local * (1 if number == 1 else -0.6), 360 + number * 30,
+                       center_lat, center_lon)
         motion = "moving"
         target_id = 12 if number == 1 and 15 <= t < 30 else 11
         packet["target"] = {"npc_id": f"npc-{target_id}", "generation": "1", "valid": True,
@@ -70,7 +71,8 @@ def object_state(seed, t, epoch, name, seq):
         paused = number == 11 and 5 <= t < 10
         progress = min(local, 5) if paused else (local - 5 if local >= 10 else local)
         pos = location(1800 if number == 11 else 1200 + local * 20,
-                       300 + progress * 40 if number == 11 else -800, 1000 if number == 11 else 900)
+                       300 + progress * 40 if number == 11 else -800, 1000 if number == 11 else 900,
+                       center_lat, center_lon)
         vn, ve, vd = (0, 0, 0) if paused else ((0, 40, 0) if number == 11 else (20, 0, 0))
         motion = "paused" if paused else "moving"
         packet["mavlink_binding"] = {"source_key": "qgc-fixture-npc", "sysid": number, "compid": 1}
@@ -83,7 +85,7 @@ def object_state(seed, t, epoch, name, seq):
     return packet
 
 
-def packets(seed, index, rate, sequences):
+def packets(seed, index, rate, sequences, center_lat=LAT, center_lon=LON):
     t = index / rate
     epoch = 2 if t >= 30 else 1
     local = t if epoch == 1 else t - 30
@@ -107,7 +109,7 @@ def packets(seed, index, rate, sequences):
         key = (epoch, name)
         seq = sequences.get(key, 0)
         sequences[key] = seq + 1
-        data = object_state(seed, t, epoch, name, seq)
+        data = object_state(seed, t, epoch, name, seq, center_lat, center_lon)
         if name == "missile-2" and abs(t - 21) < 0.5 / rate:
             data["position"] = None
         if name == "missile-2" and abs(t - 22) < 0.5 / rate:
@@ -120,10 +122,27 @@ def packets(seed, index, rate, sequences):
                            "reason": "fixture_completed"})
         output.append(completion)
     if abs(t - 21.5) < 0.5 / rate:
-        output.append(object_state(seed, 19.0, epoch, "missile-1", 2))
+        output.append(object_state(seed, 19.0, epoch, "missile-1", 2, center_lat, center_lon))
     # QGC's ordinary Vehicle path sees only NPCs. No MAVLink missile heartbeats.
-    npcs = [object_state(seed, t, epoch, name, 0) for name in ("npc-11", "npc-12")]
+    npcs = [object_state(seed, t, epoch, name, 0, center_lat, center_lon)
+            for name in ("npc-11", "npc-12")]
     return output, npcs
+
+
+def fixture_traffic(seed, index, rate, sequences, with_fixture_npcs, center_lat, center_lon):
+    updates, npcs = packets(seed, index, rate, sequences, center_lat, center_lon)
+    if with_fixture_npcs:
+        return updates, npcs
+
+    # Default: only test missile markers. Real NPCs remain on the simulator's MAVLink link.
+    updates = [p for p in updates
+               if p.get("object", {}).get("kind") == "missile"
+               or p["message"] in ("session_announce", "session_end")]
+    for packet in updates:
+        if packet["message"] == "state":
+            # Fixture NPC IDs are not bindings for the user's own aircraft.
+            packet.pop("target", None)
+    return updates, []
 
 
 def crc_x25(data, extra):
@@ -172,7 +191,8 @@ def run(args):
             t = index / args.rate
             if socket_out:
                 time.sleep(max(0, start + t / args.speed - time.monotonic()))
-            updates, npcs = packets(args.seed, index, args.rate, sequences)
+            updates, npcs = fixture_traffic(args.seed, index, args.rate, sequences,
+                                            args.with_fixture_npcs, args.center_lat, args.center_lon)
             for update in updates:
                 payload = json.dumps(update, separators=(",", ":"), allow_nan=False).encode()
                 if len(payload) > 1200:
@@ -201,16 +221,29 @@ def main():
     cli.add_argument("--overlay-host", default="127.0.0.1")
     cli.add_argument("--overlay-port", type=int, default=14660)
     cli.add_argument("--mavlink-host", default="127.0.0.1")
+    cli.add_argument("--with-fixture-npcs", action="store_true",
+                     help="Also publish synthetic npc-11/npc-12 on MAVLink (off by default)")
+    cli.add_argument("--center-lat", type=float, default=LAT,
+                     help="Latitude for the fixture flight area, default Riga")
+    cli.add_argument("--center-lon", type=float, default=LON,
+                     help="Longitude for the fixture flight area, default Riga")
     cli.add_argument("--mavlink-port", type=int, default=14550)
     cli.add_argument("--rate", type=int, default=30)
     cli.add_argument("--duration", type=float, default=33.0)
     cli.add_argument("--speed", type=float, default=1.0)
-    cli.add_argument("--seed", type=int, default=42)
+    cli.add_argument("--seed", type=int, default=None,
+                     help="Fixed session seed for reproducible tests (normal runs use a new seed)")
     cli.add_argument("--dry-run", action="store_true")
     cli.add_argument("--self-test", action="store_true")
     args = cli.parse_args()
     if min(args.rate, args.duration, args.speed) <= 0:
         cli.error("rate, duration and speed must be positive")
+    if not math.isfinite(args.center_lat) or not -89 <= args.center_lat <= 89:
+        cli.error("center-lat must be finite and between -89 and 89 degrees")
+    if not math.isfinite(args.center_lon) or not -180 <= args.center_lon <= 180:
+        cli.error("center-lon must be finite and between -180 and 180 degrees")
+    if args.seed is None:
+        args.seed = 42 if args.dry_run or args.self_test else uuid.uuid4().int
     if args.self_test:
         sequences = {}
         assert packets(42, 0, 30, sequences)[0][0]["message"] == "session_announce"
@@ -221,7 +254,22 @@ def main():
         assert any(p["message"] == "object_end" for p in packets(42, 675, 30, sequences)[0])
         assert not packets(42, 26 * 30, 30, sequences)[0]
         assert packets(42, 30 * 30, 30, sequences)[0][0]["epoch"] == "2"
+        only_missiles, no_npcs = fixture_traffic(42, 0, 30, {}, False, 50.0, 10.0)
+        assert not no_npcs
+        assert any(p.get("object", {}).get("kind") == "missile" for p in only_missiles)
+        assert not any(p.get("object", {}).get("kind") == "npc" for p in only_missiles)
+        assert not any("target" in p for p in only_missiles)
+        assert any(p.get("position", {}).get("lat_deg", 0) > 49 for p in only_missiles)
+        all_updates, fixture_npcs = fixture_traffic(42, 0, 30, {}, True, LAT, LON)
+        assert len(fixture_npcs) == 2
+        assert any(p.get("object", {}).get("kind") == "npc" for p in all_updates)
         args.dry_run = True
+    if not args.dry_run:
+        print(f"Streaming {'missiles + test NPCs' if args.with_fixture_npcs else 'missiles only'} "
+              f"to {args.overlay_host}:{args.overlay_port}, "
+              f"center=({args.center_lat}, {args.center_lon}), "
+              f"session={identity(args.seed, 'session-1')}", flush=True)
+        print("UDP packets are unacknowledged; SENT does not confirm QGC reception.", flush=True)
     print(("SELF-TEST" if args.self_test else "DRY-RUN" if args.dry_run else "SENT"), run(args))
 
 

@@ -1,6 +1,8 @@
 #include "SimulationObjectManager.h"
 
 #include <algorithm>
+#include <cmath>
+#include <numbers>
 
 #include <QtCore/QApplicationStatic>
 #include <QtNetwork/QUdpSocket>
@@ -34,10 +36,30 @@ void SimulationObject::_apply(const SimulationObjectProtocol::Packet& packet, qi
     _completionReason.clear();
     _targetId = packet.targetId;
     _targetValid = packet.targetValid;
+    // Prefer NED horizontal velocity. At low speed keep the last reliable heading.
+    // Only infer from positions when the producer omitted velocity entirely.
+    static constexpr double kMinHeadingSpeedMps = 0.5;
+    if (packet.velocityValid) {
+        if (std::hypot(packet.northMps, packet.eastMps) >= kMinHeadingSpeedMps) {
+            const double angle = std::atan2(packet.eastMps, packet.northMps) * 180.0 / std::numbers::pi;
+            _heading = angle < 0 ? angle + 360.0 : angle;
+            _headingValid = true;
+        }
+    } else if (packet.positionValid && _positionValid && packet.simTimeNs > _lastPositionSimTimeNs) {
+        const double elapsedSeconds = (packet.simTimeNs - _lastPositionSimTimeNs) / 1e9;
+        const double distanceMeters = _coordinate.distanceTo(packet.position);
+        if (distanceMeters >= 1.0 && distanceMeters / elapsedSeconds >= kMinHeadingSpeedMps) {
+            _heading = _coordinate.azimuthTo(packet.position);
+            _headingValid = true;
+        }
+    }
+
     // The old coordinate may remain for last-known display, but is never marked current.
     _positionValid = packet.positionValid;
+    _altitudeDatum = packet.positionValid ? packet.altitudeDatum : QString();
     if (packet.positionValid) {
         _coordinate = packet.position;
+        _lastPositionSimTimeNs = packet.simTimeNs;
     }
     _setLifecycle(QStringLiteral("active"));
     emit changed();
@@ -88,7 +110,11 @@ void SimulationObjectManager::initialize()
 void SimulationObjectManager::_restart()
 {
     stop();
-    if (!_settings || !_settings->enabled()->rawValue().toBool()) {
+    if (!_settings) {
+        return;
+    }
+    if (!_settings->enabled()->rawValue().toBool()) {
+        qCDebug(SimulationObjectLog) << "Simulation receiver disabled";
         return;
     }
     QHostAddress bindAddress;

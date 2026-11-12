@@ -199,6 +199,16 @@ FlightMap {
             z:              QGroundControl.zOrderVehicles
         }
     }
+    // Simulation missiles are independent of MAVLink Vehicle and ADS-B traffic.
+    MapItemView {
+        model: QGroundControl.simulationObjects
+        delegate: SimulationObjectMapItem {
+            simulationObject: object
+            markerSize: pipMode ? ScreenTools.defaultFontPixelHeight : ScreenTools.defaultFontPixelHeight * 2
+            showLabel: !pipMode
+        }
+    }
+
     // Add distance sensor view
     MapItemView{
         model: QGroundControl.multiVehicleManager.vehicles

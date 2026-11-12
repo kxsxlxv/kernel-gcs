@@ -168,7 +168,7 @@ bool position(const QJsonValue& value, SimulationObjectProtocol::Packet& packet)
     return packet.positionValid;
 }
 
-bool velocity(const QJsonValue& value)
+bool velocity(const QJsonValue& value, SimulationObjectProtocol::Packet& packet)
 {
     if (value.isUndefined() || value.isNull()) {
         return true;
@@ -181,12 +181,14 @@ bool velocity(const QJsonValue& value)
         return false;
     }
     const double bound = std::numeric_limits<double>::max();
-    return optionalReal(object, "north_mps", -bound, bound) &&
-           optionalReal(object, "east_mps", -bound, bound) &&
-           optionalReal(object, "down_mps", -bound, bound) &&
-           object.value(QStringLiteral("north_mps")).isDouble() &&
-           object.value(QStringLiteral("east_mps")).isDouble() &&
-           object.value(QStringLiteral("down_mps")).isDouble();
+    double downMps = 0;
+    if (!real(object.value(QStringLiteral("north_mps")), packet.northMps, -bound, bound) ||
+        !real(object.value(QStringLiteral("east_mps")), packet.eastMps, -bound, bound) ||
+        !real(object.value(QStringLiteral("down_mps")), downMps, -bound, bound)) {
+        return false;
+    }
+    packet.velocityValid = true;
+    return true;
 }
 
 bool target(const QJsonValue& value, SimulationObjectProtocol::Packet& packet)
@@ -318,7 +320,7 @@ bool SimulationObjectProtocol::decode(const QByteArray& bytes, Packet& packet)
                  parsed.motionState != QLatin1String("unknown")) ||
                 !root.contains(QStringLiteral("position")) ||
                 !position(root.value(QStringLiteral("position")), parsed) ||
-                !velocity(root.value(QStringLiteral("velocity"))) ||
+                !velocity(root.value(QStringLiteral("velocity")), parsed) ||
                 (parsed.kind == QLatin1String("missile") &&
                  (!target(root.value(QStringLiteral("target")), parsed) ||
                   !engagement(root.value(QStringLiteral("engagement"))))) ||

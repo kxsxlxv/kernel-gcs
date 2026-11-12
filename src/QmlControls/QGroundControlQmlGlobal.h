@@ -30,6 +30,7 @@ Q_MOC_INCLUDE("MAVLinkSigningKeys.h")
 Q_MOC_INCLUDE("MissionCommandTree.h")
 Q_MOC_INCLUDE("MultiVehicleManager.h")
 Q_MOC_INCLUDE("PositionManager.h")
+Q_MOC_INCLUDE("QmlObjectListModel.h")
 Q_MOC_INCLUDE("QGCCorePlugin.h")
 Q_MOC_INCLUDE("QGCMapEngineManager.h")
 Q_MOC_INCLUDE("QGCPalette.h")
@@ -67,6 +68,7 @@ public:
     Q_PROPERTY(VideoManager*        videoManager            READ    videoManager            CONSTANT)
     Q_PROPERTY(SettingsManager*     settingsManager         READ    settingsManager         CONSTANT)
     Q_PROPERTY(ADSBVehicleManager*  adsbVehicleManager      READ    adsbVehicleManager      CONSTANT)
+    Q_PROPERTY(QmlObjectListModel*  simulationObjects       READ    simulationObjects       CONSTANT)
     Q_PROPERTY(QGCCorePlugin*       corePlugin              READ    corePlugin              CONSTANT)
     Q_PROPERTY(MissionCommandTree*  missionCommandTree      READ    missionCommandTree      CONSTANT)
     Q_PROPERTY(MAVLinkSigningKeys*   mavlinkSigningKeys      READ    mavlinkSigningKeys      CONSTANT)
@@ -170,6 +172,8 @@ public:
     GPSManager* gpsManager() const;
 
     ADSBVehicleManager* adsbVehicleManager() { return _adsbVehicleManager; }
+
+    QmlObjectListModel* simulationObjects() const;
 
     QmlUnitsConversion* unitsConversion() { return &_unitsConversion; }
 

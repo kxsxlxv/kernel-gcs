@@ -229,6 +229,22 @@ function(add_qgc_test test_name)
     endif()
 
     set(_base_test_env "QT_LOGGING_RULES=*.debug=false")
+
+    # CTest launches QGroundControl.exe directly, not through the developer
+    # launcher that populates PATH. Windows needs the Qt/GStreamer SDK DLLs.
+    set(_windows_test_path_modifications)
+    if(WIN32)
+        list(APPEND _windows_test_path_modifications "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
+        if(COMMAND qgc_gst_layout_get)
+            qgc_gst_layout_get(ROOT_DIR _qgc_ctest_gst_root)
+            if(_qgc_ctest_gst_root AND EXISTS "${_qgc_ctest_gst_root}/bin")
+                list(APPEND _windows_test_path_modifications
+                    "PATH=path_list_prepend:${_qgc_ctest_gst_root}/bin"
+                )
+            endif()
+        endif()
+    endif()
+
     if(NOT QGC_TEST_ONSCREEN)
         # Offscreen plugin + software Quick backend; LIBGL_ALWAYS_SOFTWARE forces the
         # GLX path (under xvfb, see cmake_helper.py) onto Mesa llvmpipe, no GPU needed.
@@ -287,8 +303,9 @@ function(add_qgc_test test_name)
             set_tests_properties(${_ctest_name} PROPERTIES SKIP_REGULAR_EXPRESSION "${ARG_SKIP_REGEX}")
         endif()
 
-        if(ARG_ENV_MODIFICATION)
-            set_tests_properties(${_ctest_name} PROPERTIES ENVIRONMENT_MODIFICATION "${ARG_ENV_MODIFICATION}")
+        set(_test_env_modifications ${_windows_test_path_modifications} ${ARG_ENV_MODIFICATION})
+        if(_test_env_modifications)
+            set_tests_properties(${_ctest_name} PROPERTIES ENVIRONMENT_MODIFICATION "${_test_env_modifications}")
         endif()
 
         # Resource locking for tests that can't run in parallel

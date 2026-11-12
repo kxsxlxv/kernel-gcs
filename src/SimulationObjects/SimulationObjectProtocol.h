@@ -29,6 +29,9 @@ struct Packet {
     QGeoCoordinate position;
     bool positionValid = false;
     QString altitudeDatum;
+    bool velocityValid = false;
+    double northMps = 0;
+    double eastMps = 0;
 };
 
 /// Decode the versioned, simulation-only JSON wire profile. No MAVLink frames are accepted.
