@@ -37,6 +37,7 @@
 #include "QGCNetworkHelper.h"
 #include "QGCVersionCheck.h"
 #include "SettingsManager.h"
+#include "SimulationObjectManager.h"
 #include "Vehicle.h"
 #include "VideoBackend.h"
 #include "VideoManager.h"
@@ -299,6 +300,7 @@ void QGCApplication::_initForNormalAppBoot()
                                   SettingsManager::instance()->appSettings()->audioMuted());
     FollowMe::instance()->init();
     LinkManager::instance()->init();
+    SimulationObjectManager::instance()->initialize();
     GPSManager::instance()->init();
     VideoManager::instance()->init(mainRootWindow());
 

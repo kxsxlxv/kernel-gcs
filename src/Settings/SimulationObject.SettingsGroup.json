@@ -1,0 +1,77 @@
+{
+    "version": 1,
+    "fileType": "FactMetaData",
+    "QGC.MetaData.Facts": [
+        {
+            "name": "enabled",
+            "type": "bool",
+            "default": false,
+            "label": "Enable simulation object receiver",
+            "shortDesc": "Receive read-only simulation object traffic on an explicit UDP socket."
+        },
+        {
+            "name": "suppressVehicleConnectedPopups",
+            "type": "bool",
+            "default": true,
+            "label": "Suppress informational vehicle connection dialogs in simulation mode",
+            "shortDesc": "When the simulation object receiver is enabled, avoid the noncritical Connected to Vehicle popup. Other warnings remain enabled."
+        },
+        {
+            "name": "bindAddress",
+            "type": "string",
+            "default": "127.0.0.1",
+            "label": "Simulation listener interface",
+            "shortDesc": "Numeric local IP address. Use 0.0.0.0 only with a trusted peer allow-list."
+        },
+        {
+            "name": "listenPort",
+            "type": "uint32",
+            "min": 1,
+            "max": 65535,
+            "default": 14660,
+            "label": "Simulation UDP port",
+            "shortDesc": "Separate from MAVLink; defaults to 14660."
+        },
+        {
+            "name": "allowedSender",
+            "type": "string",
+            "default": "127.0.0.1",
+            "label": "Trusted simulation sender IP",
+            "shortDesc": "Exact numeric source IP, not a hostname."
+        },
+        {
+            "name": "producerId",
+            "type": "string",
+            "default": "qgc-fixture",
+            "label": "Trusted simulation producer ID",
+            "shortDesc": "Must match the packet's source.producer_id."
+        },
+        {
+            "name": "completedRetentionMs",
+            "type": "uint32",
+            "min": 0,
+            "max": 60000,
+            "default": 1000,
+            "label": "Completed missile retention (ms)",
+            "shortDesc": "How long to retain an explicitly ended simulation object."
+        },
+        {
+            "name": "staleTimeoutMs",
+            "type": "uint32",
+            "min": 100,
+            "max": 60000,
+            "default": 2000,
+            "label": "Simulation stale threshold (ms)",
+            "shortDesc": "Network staleness based on monotonic receive time."
+        },
+        {
+            "name": "removalTimeoutMs",
+            "type": "uint32",
+            "min": 200,
+            "max": 120000,
+            "default": 5000,
+            "label": "Simulation stale removal (ms)",
+            "shortDesc": "Remove stale objects from the active model without considering them completed."
+        }
+    ]
+}

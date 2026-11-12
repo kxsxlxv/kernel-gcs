@@ -1,0 +1,15 @@
+#include "SimulationObjectSettings.h"
+
+DECLARE_SETTINGGROUP(SimulationObject, "SimulationObject")
+{
+}
+
+DECLARE_SETTINGSFACT(SimulationObjectSettings, enabled)
+DECLARE_SETTINGSFACT(SimulationObjectSettings, suppressVehicleConnectedPopups)
+DECLARE_SETTINGSFACT(SimulationObjectSettings, bindAddress)
+DECLARE_SETTINGSFACT(SimulationObjectSettings, listenPort)
+DECLARE_SETTINGSFACT(SimulationObjectSettings, allowedSender)
+DECLARE_SETTINGSFACT(SimulationObjectSettings, producerId)
+DECLARE_SETTINGSFACT(SimulationObjectSettings, completedRetentionMs)
+DECLARE_SETTINGSFACT(SimulationObjectSettings, staleTimeoutMs)
+DECLARE_SETTINGSFACT(SimulationObjectSettings, removalTimeoutMs)

@@ -51,6 +51,8 @@ target_sources(
             SettingsGroup.h
             SettingsManager.cc
             SettingsManager.h
+            SimulationObjectSettings.cc
+            SimulationObjectSettings.h
             UnitsSettings.cc
             UnitsSettings.h
             VideoSettings.cc
