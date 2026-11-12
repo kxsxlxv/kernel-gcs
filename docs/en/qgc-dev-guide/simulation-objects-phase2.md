@@ -65,6 +65,12 @@ QGC is open, in another terminal:
 python .\tools\simobjects\phase1_publisher.py --duration 60 --rate 30
 ```
 
+The publisher uses a **new session identity on every normal invocation**, so
+repeat runs do not get rejected as replays by the Phase 1 receiver. Pass
+`--seed 42` only when deterministic session replay is intentionally required.
+A `SENT` count indicates successful local UDP `sendto` operations, **not**
+that QGC has received or accepted the packets.
+
 The default fixture launch point is near **Riga, Latvia**
 (latitude `56.95`, longitude `24.11`). If your real NPCs are flying elsewhere,
 provide **their approximate map-area coordinates** so test missile markers
@@ -85,19 +91,25 @@ to the overlay; **do not use it with your real moving NPCs**.
 
 ### Troubleshooting invisible missile markers
 
-1. Run QGC with `--logging=SimulationObjects.Manager --log-output` to see
+1. While QGC is running, verify the receiver bound the port from PowerShell:
+   `Get-NetUDPEndpoint -LocalPort 14660 -ErrorAction SilentlyContinue`.
+   **No result** means that no UDP endpoint is listening on that port;
+   check the actual QGC INI and enable the receiver, then restart.
+2. Run QGC with `--logging=SimulationObjects.Manager,API.QGCApplication --log-output` to see
    receiver and object-admission diagnostics. A working receiver logs
    `Simulation receiver listening` on the configured endpoint and
-   `Simulation object created` when packets arrive.
-2. The fixture sends from `127.0.0.1` with producer ID `qgc-fixture` to
+   `Simulation object created` when packets arrive. `Simulation receiver disabled`
+   means `SimulationObject/enabled` is false. The `Settings location` log names
+   the settings INI file that the running instance actually uses.
+3. The fixture sends from `127.0.0.1` with producer ID `qgc-fixture` to
    port `14660` unless overridden. The configured allowed sender, producer
    ID, and listener must match the actual source. For another PC, use
    appropriately configured **trusted** interface/peer addresses.
-3. Zoom Fly View near the fixture center **while the publisher is running**.
+4. Zoom Fly View near the fixture center **while the publisher is running**.
    The default duration is finite; after stopping, the Phase 1 expiration
    timer removes its markers. If the log shows object creation but no marker,
    check for QML runtime warnings and verify the current Phase 2 binary is launched.
-4. With `ctest --preset Windows-debug -R SimulationObjectTest --output-on-failure`
+5. With `ctest --preset Windows-debug -R SimulationObjectTest --output-on-failure`
    confirm the underlying data model still passes. This alone does not verify
    the QML overlay visually.
 
