@@ -4,8 +4,10 @@
 
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QtCore/QRegularExpression>
 #include <QtCore/QScopeGuard>
 #include <QtNetwork/QHostAddress>
+#include <QtNetwork/QUdpSocket>
 
 #include "Fact.h"
 #include "QmlObjectListModel.h"
@@ -315,6 +317,56 @@ void SimulationObjectTest::_headingFromCoordinates()
     // Do not infer a heading across an interval in which the position was invalid.
     QVERIFY(sendPosition(6, 56.9501, 24.1102, 5250000000));
     QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 0.0, 360.0)), 0.01);
+}
+
+void SimulationObjectTest::_receiverStatus()
+{
+    auto* settings = SettingsManager::instance()->simulationObjectSettings();
+    Fact* const enabled = settings->enabled();
+    Fact* const listenPort = settings->listenPort();
+    Fact* const allowedSender = settings->allowedSender();
+    const QVariant originalEnabled = enabled->rawValue();
+    const QVariant originalPort = listenPort->rawValue();
+    const QVariant originalSender = allowedSender->rawValue();
+    const auto restore = qScopeGuard([=]() {
+        enabled->setRawValue(false);
+        listenPort->setRawValue(originalPort);
+        allowedSender->setRawValue(originalSender);
+        enabled->setRawValue(originalEnabled);
+    });
+
+    QUdpSocket portProbe;
+    QVERIFY(portProbe.bind(QHostAddress::LocalHost, 0));
+    const quint16 port = portProbe.localPort();
+    portProbe.close();
+
+    enabled->setRawValue(false);
+    listenPort->setRawValue(port);
+    allowedSender->setRawValue(QStringLiteral("127.0.0.1"));
+    SimulationObjectManager manager(settings);
+    manager.initialize();
+    QCOMPARE(manager.receiverStatus(), QStringLiteral("disabled"));
+
+    enabled->setRawValue(true);
+    QCOMPARE(manager.receiverStatus(), QStringLiteral("listening"));
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession1)), QHostAddress(QHostAddress::LocalHost)));
+    QCOMPARE(manager.receiverStatus(), QStringLiteral("receiving"));
+    QVERIFY(manager.acceptDatagram(packet(state(kSession1, 1)), QHostAddress(QHostAddress::LocalHost)));
+
+    manager.expireAt(2500);
+    QCOMPARE(manager.receiverStatus(), QStringLiteral("stale"));
+    QVERIFY(manager.acceptDatagram(packet(state(kSession1, 2)), QHostAddress(QHostAddress::LocalHost)));
+    QCOMPARE(manager.receiverStatus(), QStringLiteral("receiving"));
+
+    expectLogMessage("SimulationObjects.Manager", QtWarningMsg,
+                     QRegularExpression(QStringLiteral("^Invalid simulation receiver endpoint or source configuration$")));
+    allowedSender->setRawValue(QStringLiteral("invalid-ip"));
+    verifyExpectedLogMessage();
+    QCOMPARE(manager.receiverStatus(), QStringLiteral("error"));
+    allowedSender->setRawValue(QStringLiteral("127.0.0.1"));
+    QCOMPARE(manager.receiverStatus(), QStringLiteral("listening"));
+    manager.stop();
+    QCOMPARE(manager.receiverStatus(), QStringLiteral("disabled"));
 }
 
 void SimulationObjectTest::_staleAndDisconnect()

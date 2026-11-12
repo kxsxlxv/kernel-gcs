@@ -90,6 +90,7 @@ class SimulationObjectManager : public QObject
     Q_OBJECT
     Q_MOC_INCLUDE("QmlObjectListModel.h")
     Q_PROPERTY(QmlObjectListModel* objects READ objects CONSTANT)
+    Q_PROPERTY(QString receiverStatus READ receiverStatus NOTIFY receiverStatusChanged)
 
 public:
     explicit SimulationObjectManager(SimulationObjectSettings* settings, QObject* parent = nullptr);
@@ -97,6 +98,7 @@ public:
 
     static SimulationObjectManager* instance();
     QmlObjectListModel* objects() const { return _objects; }
+    QString receiverStatus() const { return _receiverStatus; }
 
     void initialize();
     void stop();
@@ -106,6 +108,9 @@ public:
     void expireAt(qint64 monotonicMs);
     SimulationObject* objectFor(const QString& sessionId, quint64 epoch,
                                 const QString& id, quint64 generation) const;
+
+signals:
+    void receiverStatusChanged();
 
 private:
     struct Watermark {
@@ -121,6 +126,7 @@ private:
     void _restart();
     void _clearObjects();
     void _receivePending();
+    void _setReceiverStatus(const QString& status);
 
     SimulationObjectSettings* _settings = nullptr;
     QmlObjectListModel* _objects = nullptr;
@@ -128,6 +134,7 @@ private:
     QTimer _cleanupTimer;
     QElapsedTimer _clock;
     QHostAddress _allowedPeer;
+    QString _receiverStatus = QStringLiteral("disabled");
     QHash<QString, SimulationObject*> _entries;
     QHash<QString, Watermark> _watermarks;
     QSet<QString> _retiredSessions;

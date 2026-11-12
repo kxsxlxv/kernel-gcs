@@ -127,6 +127,19 @@ Item {
             z:                      QGroundControl.zOrderWidgets
         }
 
+        // Passive receiver presence indicator, shared by QtLocation and GeoMap.
+        SimulationTelemetryStatus {
+            anchors.top:            parent.top
+            anchors.left:           parent.left
+            anchors.topMargin:      toolbar.height + _widgetMargin
+            anchors.leftMargin:     _widgetMargin
+            z:                      QGroundControl.zOrderWidgets + 1
+            objectsModel:           QGroundControl.simulationObjects
+            receiver:               QGroundControl.simulationObjectManager
+            visible:                _mainWindowIsMap && !QGroundControl.videoManager.fullScreen
+                                    && QGroundControl.settingsManager.simulationObjectSettings.enabled.rawValue
+        }
+
         FlyViewWidgetLayer {
             id:                     widgetLayer
             objectName:             "flyViewWidgetLayer"

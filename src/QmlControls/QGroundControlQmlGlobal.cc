@@ -96,6 +96,11 @@ QmlObjectListModel* QGroundControlQmlGlobal::simulationObjects() const
     return SimulationObjectManager::instance()->objects();
 }
 
+SimulationObjectManager* QGroundControlQmlGlobal::simulationObjectManager() const
+{
+    return SimulationObjectManager::instance();
+}
+
 GPSManager* QGroundControlQmlGlobal::gpsManager() const
 {
     return GPSManager::instance();

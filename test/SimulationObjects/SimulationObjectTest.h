@@ -13,4 +13,5 @@ private slots:
     void _headingFromVelocity();
     void _headingFromCoordinates();
     void _staleAndDisconnect();
+    void _receiverStatus();
 };

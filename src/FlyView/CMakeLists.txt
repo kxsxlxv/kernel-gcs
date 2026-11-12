@@ -32,6 +32,7 @@ qt_add_qml_module(
         SimulationObjectMapItem.qml
         SimulationObjectGeoMapItem.qml
         SimulationObjectMarker.qml
+        SimulationTelemetryStatus.qml
         FlyViewMapClickDropPanel.qml
         FlyViewMissionCompleteDialog.qml
         FlyViewOccluders.qml
