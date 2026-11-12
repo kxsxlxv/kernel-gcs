@@ -245,25 +245,25 @@ void SimulationObjectTest::_headingFromVelocity()
     QCOMPARE(missile->heading(), 0.0);
 
     QVERIFY(sendVelocity(2, 0, 95));
-    QCOMPARE_NEAR(missile->heading(), 90.0, 0.001);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 90.0, 360.0)), 0.001);
 
     QVERIFY(sendVelocity(3, -95, 0));
-    QCOMPARE_NEAR(missile->heading(), 180.0, 0.001);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 180.0, 360.0)), 0.001);
 
     QVERIFY(sendVelocity(4, 0, -95));
-    QCOMPARE_NEAR(missile->heading(), 270.0, 0.001);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 270.0, 360.0)), 0.001);
 
     QVERIFY(sendVelocity(5, 100, -1.7455));
-    QCOMPARE_NEAR(missile->heading(), 359.0, 0.01);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 359.0, 360.0)), 0.01);
 
     QVERIFY(sendVelocity(6, 100, 1.7455));
-    QCOMPARE_NEAR(missile->heading(), 1.0, 0.01);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 1.0, 360.0)), 0.01);
 
     QVERIFY(sendVelocity(7, 0.1, 0.1));
-    QCOMPARE_NEAR(missile->heading(), 1.0, 0.01);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 1.0, 360.0)), 0.01);
 
     QVERIFY(manager.acceptDatagram(packet(ended(kSession1, 8)), peer));
-    QCOMPARE_NEAR(missile->heading(), 1.0, 0.01);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 1.0, 360.0)), 0.01);
 }
 
 void SimulationObjectTest::_headingFromCoordinates()
@@ -300,13 +300,13 @@ void SimulationObjectTest::_headingFromCoordinates()
 
     QVERIFY(sendPosition(2, 56.95, 24.1101, 1250000000));
     QVERIFY(missile->headingValid());
-    QCOMPARE_NEAR(missile->heading(), 90.0, 0.01);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 90.0, 360.0)), 0.01);
 
     QVERIFY(sendPosition(3, 56.9501, 24.1101, 2250000000));
-    QCOMPARE_NEAR(missile->heading(), 0.0, 0.01);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 0.0, 360.0)), 0.01);
 
     QVERIFY(sendPosition(4, 56.9501, 24.1101, 3250000000));
-    QCOMPARE_NEAR(missile->heading(), 0.0, 0.01);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 0.0, 360.0)), 0.01);
 
     QVERIFY(sendPosition(5, 56.9501, 24.1101, 4250000000, false));
     QVERIFY(!missile->positionValid());
@@ -314,7 +314,7 @@ void SimulationObjectTest::_headingFromCoordinates()
 
     // Do not infer a heading across an interval in which the position was invalid.
     QVERIFY(sendPosition(6, 56.9501, 24.1102, 5250000000));
-    QCOMPARE_NEAR(missile->heading(), 0.0, 0.01);
+    QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 0.0, 360.0)), 0.01);
 }
 
 void SimulationObjectTest::_staleAndDisconnect()
