@@ -14,7 +14,7 @@ The receiver is disabled by default. QGC persists the following Fact settings un
 | Fact | Default | Meaning |
 | --- | --- | --- |
 | `enabled` | false | Enable the simulation UDP receiver |
-| `suppressVehicleConnectedPopups` | true | While enabled, suppress noncritical \`Connected to Vehicle\` dialogs; critical warnings remain |
+| `suppressVehicleConnectedPopups` | true | While enabled, suppress noncritical `Connected to Vehicle` dialogs; critical warnings remain |
 | `bindAddress` | `127.0.0.1` | Local numeric listen address |
 | `listenPort` | `14660` | UDP listen port |
 | `allowedSender` | `127.0.0.1` | **Exact** numeric source IP |
@@ -24,9 +24,21 @@ The receiver is disabled by default. QGC persists the following Fact settings un
 | `removalTimeoutMs` | `5000` | Remove inactive objects without completing them |
 
 Phase 1 does not yet add these controls to a settings page. QGC uses Qt `QSettings`, which stores
-application preferences in the Windows user's registry; the `SimulationObject` group can be configured
-there before launching QGC. Prefer a separate QGC settings profile while testing; back up existing keys.
-The settings group will gain a UI in Phase 4.
+application preferences in an INI file (not the Windows registry). Close QGC and locate the exact
+INI pathname from its `Settings location` log entry in `QGCApplication.cc`. Add or edit the following
+section and restart QGC:
+
+```ini
+[SimulationObject]
+enabled=true
+suppressVehicleConnectedPopups=true
+bindAddress=127.0.0.1
+listenPort=14660
+allowedSender=127.0.0.1
+producerId=qgc-fixture
+```
+
+Back up this file first. The settings group will gain a UI in Phase 4.
 
 Loopback is the safe default. For a separate Windows computer, configure `bindAddress` as a specific
 interface address and `allowedSender` as the simulator computer's IP. Do not expose the listener on
