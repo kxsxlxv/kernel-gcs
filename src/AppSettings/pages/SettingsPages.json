@@ -36,6 +36,12 @@
             "pageDefinition": "SimulationObjects.SettingsUI.json"
         },
         {
+            "name": "Map Trails",
+            "qml": "MapTrailsSettings.qml",
+            "icon": "qrc:/InstrumentValueIcons/map.svg",
+            "pageDefinition": "MapTrails.SettingsUI.json"
+        },
+        {
             "name": "Comm Links",
             "qml": "CommLinksSettings.qml",
             "icon": "qrc:/InstrumentValueIcons/usb.svg",

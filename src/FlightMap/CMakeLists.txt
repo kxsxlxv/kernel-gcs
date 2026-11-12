@@ -9,6 +9,9 @@ qt_add_qml_module(FlightMapModule
     URI QGroundControl.FlightMap
     VERSION 1.0
     RESOURCE_PREFIX /qml
+    SOURCES
+        MapTrailHistory.h
+        MapTrailHistory.cc
     QML_FILES
         MapItems/ADSBVehicleMapItem.qml
         MapItems/CameraTriggerIndicator.qml

@@ -1,0 +1,74 @@
+{
+    "version": 1,
+    "fileType": "SettingsUI",
+    "groups": [
+        {
+            "heading": "Vehicle Trails",
+            "keywords": [
+                "vehicle",
+                "mavlink",
+                "track",
+                "trajectory",
+                "trail",
+                "history"
+            ],
+            "controls": [
+                {
+                    "setting": "flightMapSettings.vehicleTrailEnabled"
+                },
+                {
+                    "setting": "flightMapSettings.vehicleTrailLifetimeSec"
+                },
+                {
+                    "setting": "flightMapSettings.vehicleTrailStyle"
+                },
+                {
+                    "setting": "flightMapSettings.vehicleTrailColor"
+                },
+                {
+                    "setting": "flightMapSettings.vehicleTrailWidth"
+                },
+                {
+                    "setting": "flightMapSettings.vehicleTrailOpacity"
+                },
+                {
+                    "setting": "flightMapSettings.vehicleTrailClearWhenStopped"
+                }
+            ]
+        },
+        {
+            "heading": "Simulation Object Trails",
+            "keywords": [
+                "simulation",
+                "object",
+                "missile",
+                "track",
+                "trail",
+                "history"
+            ],
+            "controls": [
+                {
+                    "setting": "simulationObjectSettings.trailEnabled"
+                },
+                {
+                    "setting": "simulationObjectSettings.trailLifetimeSec"
+                },
+                {
+                    "setting": "simulationObjectSettings.trailStyle"
+                },
+                {
+                    "setting": "simulationObjectSettings.trailColor"
+                },
+                {
+                    "setting": "simulationObjectSettings.trailWidth"
+                },
+                {
+                    "setting": "simulationObjectSettings.trailOpacity"
+                },
+                {
+                    "setting": "simulationObjectSettings.trailClearWhenStopped"
+                }
+            ]
+        }
+    ]
+}
