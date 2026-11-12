@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic Phase 1 simulation-object fixture; sends only telemetry, never commands."""
+"""Simulation-only telemetry fixture; never sends commands or MAVLink missiles."""
 import argparse
 import json
 import math
@@ -231,7 +231,8 @@ def main():
     cli.add_argument("--rate", type=int, default=30)
     cli.add_argument("--duration", type=float, default=33.0)
     cli.add_argument("--speed", type=float, default=1.0)
-    cli.add_argument("--seed", type=int, default=42)
+    cli.add_argument("--seed", type=int, default=None,
+                     help="Fixed session seed for reproducible tests (normal runs use a new seed)")
     cli.add_argument("--dry-run", action="store_true")
     cli.add_argument("--self-test", action="store_true")
     args = cli.parse_args()
@@ -241,6 +242,8 @@ def main():
         cli.error("center-lat must be finite and between -89 and 89 degrees")
     if not math.isfinite(args.center_lon) or not -180 <= args.center_lon <= 180:
         cli.error("center-lon must be finite and between -180 and 180 degrees")
+    if args.seed is None:
+        args.seed = 42 if args.dry_run or args.self_test else uuid.uuid4().int
     if args.self_test:
         sequences = {}
         assert packets(42, 0, 30, sequences)[0][0]["message"] == "session_announce"
@@ -261,6 +264,12 @@ def main():
         assert len(fixture_npcs) == 2
         assert any(p.get("object", {}).get("kind") == "npc" for p in all_updates)
         args.dry_run = True
+    if not args.dry_run:
+        print(f"Streaming {'missiles + test NPCs' if args.with_fixture_npcs else 'missiles only'} "
+              f"to {args.overlay_host}:{args.overlay_port}, "
+              f"center=({args.center_lat}, {args.center_lon}), "
+              f"session={identity(args.seed, 'session-1')}", flush=True)
+        print("UDP packets are unacknowledged; SENT does not confirm QGC reception.", flush=True)
     print(("SELF-TEST" if args.self_test else "DRY-RUN" if args.dry_run else "SENT"), run(args))
 
 
