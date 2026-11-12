@@ -1,4 +1,6 @@
 import QtQuick
+
+import QGroundControl
 import QGroundControl.Controls
 
 /// Read-only simulation missile marker artwork shared by both Fly View map engines.
