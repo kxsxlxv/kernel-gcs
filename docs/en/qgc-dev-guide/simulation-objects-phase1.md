@@ -90,8 +90,37 @@ The fixture sends NPC aircraft as ordinary MAVLink HEARTBEAT/GLOBAL_POSITION_INT
 simulation UDP JSON. No flight-control commands are sent. When running across PCs, replace the
 destination addresses with the Windows computer's reachable IP and configure the receiver/firewall.
 
-Build/tests: `cmake --build --preset Windows-debug` and `ctest --preset Windows-debug -R SimulationObjectTest --output-on-failure`.
-Use the existing locally working CMake presets and Qt toolchain; Phase 1 does not upgrade dependencies.
+### Windows 10: preserve the existing working build
+
+The local `run-qgc.ps1` script is a **runtime launcher only**. It points at
+`build\\Debug\\QGroundControl.exe` and prepends Qt 6.12.0 MSVC and GStreamer runtime paths to `PATH`.
+It does not activate the MSVC compiler, provide Ninja, or set `QT_ROOT_DIR` for CMake.
+
+Open **Developer PowerShell for VS 2022** (x64) and run from the repository root:
+
+```powershell
+$env:QT_ROOT_DIR = "C:\\Qt\\6.12.0\\msvc2022_64"
+$env:PATH = "C:\\Qt\\Tools\\Ninja;$env:PATH"
+Test-Path "$env:QT_ROOT_DIR\\lib\\cmake\\Qt6\\qt.toolchain.cmake"
+Get-Command cl, ninja, cmake
+cmake --fresh --preset Windows-debug
+cmake --build --preset Windows-debug --parallel 8
+ctest --preset Windows-debug -R SimulationObjectTest --output-on-failure
+```
+
+If Ninja is not under `C:\\Qt\\Tools\\Ninja`, add the directory containing your already-installed
+`ninja.exe` to the shell's `PATH` instead (Visual Studio may also include one).
+The missing ccache/sccache warning is optional and **not** the cause of configuration failure.
+The `--fresh` flag resets only the separate `build\\Windows-debug` CMake cache, not the working
+`build\\Debug` executable or its cache.
+
+The Phase 1 binary will normally be `build\\Windows-debug\\Debug\\QGroundControl.exe`, and
+its generated QML module path `build\\Windows-debug\\qml`. To keep the original launcher
+unchanged, copy it to `run-qgc-phase1.ps1` and change those two paths in that copy.
+This preserves the verified `run-qgc.ps1`/default-build workflow.
+
+Do not run CTest until configure **and** compile succeed: a failed configure naturally
+produces `No tests were found`. Phase 1 does not upgrade the Qt/compiler/dependencies.
 
 Disable/revert: set `SimulationObject/enabled=false` (or undo the Phase 1 commit/PR).
 The ordinary MAVLink Vehicle path is unchanged except for the separately configurable, simulation-mode-only informational connection dialog suppression.
