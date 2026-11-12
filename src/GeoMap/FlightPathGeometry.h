@@ -50,7 +50,7 @@ class FlightPathGeometry : public QQuick3DGeometry
 public:
     explicit FlightPathGeometry(QQuick3DObject* parent = nullptr);
 
-    static constexpr int kFloatsPerVertex = 8;  ///< position 3, tangent 3, side flag, highlight flag
+    static constexpr int kFloatsPerVertex = 10; ///< position 3, tangent 3, side/highlight 2, distance/fade 2
 
     GeoScene* scene() const { return _scene; }
 
@@ -66,7 +66,8 @@ public:
     /// Replace the whole path (QGeoCoordinate variants, TrajectoryPoints::list() format).
     /// highlights[i] (bool) highlights point i; missing entries are false. A
     /// segment between differently highlighted points blends along its length.
-    Q_INVOKABLE void setPath(const QVariantList& coordinates, const QVariantList& highlights = QVariantList());
+    Q_INVOKABLE void setPath(const QVariantList& coordinates, const QVariantList& highlights = QVariantList(),
+                             const QVariantList& fades = QVariantList());
 
     Q_INVOKABLE void appendPoint(const QGeoCoordinate& coordinate);
 
@@ -91,6 +92,8 @@ private:
     GeoScene* _scene = nullptr;
     QList<QGeoCoordinate> _points;
     QList<bool> _highlights;
+    QList<float> _fadeFactors;
+    QList<float> _pathDistances;
 
     // Incremental mirrors of the GPU buffer so mutations avoid full rebuilds
     QList<QVector3D> _positions;

@@ -159,10 +159,27 @@ GeoMapView {
         }
     }
 
-    GeoMapFlightPath {
-        scene: root.scene
-        surfaceModel: root.surfaceModel
-        vehicle: root._activeVehicle
+    // One independently timed trail for each MAVLink Vehicle.
+    Repeater {
+        model: QGroundControl.multiVehicleManager.vehicles
+
+        GeoMapFlightPath {
+            scene: root.scene
+            surfaceModel: root.surfaceModel
+            vehicle: object
+        }
+    }
+
+    // Simulation objects never enter the MAVLink Vehicle model.
+    Repeater {
+        model: QGroundControl.simulationObjects
+
+        GeoMapFlightPath {
+            scene: root.scene
+            surfaceModel: root.surfaceModel
+            simulationObject: object
+            simulationHomeTerrainBias: root._activeVehicleHomeTerrainBias
+        }
     }
 
     GeoMapMissionPath {

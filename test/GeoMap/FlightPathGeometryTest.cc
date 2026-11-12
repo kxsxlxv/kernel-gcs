@@ -86,7 +86,7 @@ void FlightPathGeometryTest::_ribbonLayout()
     QCOMPARE(geometry.stride(), FlightPathGeometry::kFloatsPerVertex * static_cast<int>(sizeof(float)));
     QCOMPARE(geometry.vertexData().size(),
              3 * 2 * FlightPathGeometry::kFloatsPerVertex * static_cast<int>(sizeof(float)));
-    QCOMPARE(geometry.attributeCount(), 3);
+    QCOMPARE(geometry.attributeCount(), 4);
 
     const QQuick3DGeometry::Attribute position = geometry.attribute(0);
     QCOMPARE(position.semantic, QQuick3DGeometry::Attribute::PositionSemantic);
@@ -102,6 +102,10 @@ void FlightPathGeometryTest::_ribbonLayout()
     QCOMPARE(side.semantic, QQuick3DGeometry::Attribute::TexCoord0Semantic);
     QCOMPARE(side.offset, kSideOffset * static_cast<int>(sizeof(float)));
     QCOMPARE(side.componentType, QQuick3DGeometry::Attribute::F32Type);
+
+    const QQuick3DGeometry::Attribute fadeAttribute = geometry.attribute(3);
+    QCOMPARE(fadeAttribute.semantic, QQuick3DGeometry::Attribute::TexCoord1Semantic);
+    QCOMPARE(fadeAttribute.offset, 8 * static_cast<int>(sizeof(float)));
 
     const QByteArray data = geometry.vertexData();
 
@@ -215,6 +219,31 @@ void FlightPathGeometryTest::_highlightFlags()
     geometry.setPath(makePath({kStart, second}), QVariantList{true});
     geometry.appendPoint(third);
     QCOMPARE(highlightsOf(), QList<float>({1.0f, 0.0f, 0.0f}));
+}
+
+void FlightPathGeometryTest::_trailFadeAndDistances()
+{
+    GeoScene scene;
+    FlightPathGeometry geometry;
+    geometry.setScene(&scene);
+
+    const QGeoCoordinate east = kStart.atDistanceAndAzimuth(100, 90);
+    const QGeoCoordinate fartherEast = kStart.atDistanceAndAzimuth(200, 90);
+    geometry.setPath(makePath({kStart, east, fartherEast}), {}, QVariantList{0.1, 0.5, 1.0});
+
+    const auto first = vertexAt(geometry.vertexData(), 0);
+    const auto middle = vertexAt(geometry.vertexData(), 2);
+    const auto last = vertexAt(geometry.vertexData(), 4);
+    QCOMPARE_LT(std::abs(first[9] - 0.1f), 1e-6f);
+    QCOMPARE_LT(std::abs(middle[9] - 0.5f), 1e-6f);
+    QCOMPARE(last[9], 1.0f);
+    QVERIFY(first[8] < middle[8] && middle[8] < last[8]);
+
+    geometry.setPath(makePath({east, fartherEast}), {}, QVariantList{0.3, 0.8});
+    QCOMPARE(geometry.pointCount(), 2);
+    QCOMPARE_LT(std::abs(vertexAt(geometry.vertexData(), 0)[9] - 0.3f), 1e-6f);
+    geometry.clearPath();
+    QCOMPARE(geometry.vertexData().size(), 0);
 }
 
 void FlightPathGeometryTest::_pathMutations()
