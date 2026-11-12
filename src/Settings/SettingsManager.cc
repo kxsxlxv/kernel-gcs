@@ -30,6 +30,7 @@
 #include "RTKSettings.h"
 #include "RemoteIDSettings.h"
 #include "SettingsGroup.h"
+#include "SimulationObjectSettings.h"
 #include "UnitsSettings.h"
 #include "VideoSettings.h"
 #include "Viewer3DSettings.h"
@@ -83,6 +84,7 @@ void SettingsManager::init()
     _logViewerSettings = new LogViewerSettings(this);
     _viewer3DSettings = new Viewer3DSettings(this);
     _adsbVehicleManagerSettings = new ADSBVehicleManagerSettings(this);
+    _simulationObjectSettings = new SimulationObjectSettings(this);
     _apmMavlinkStreamRateSettings = new APMMavlinkStreamRateSettings(this);
 
     QGCCorePlugin::instance()->registerCustomSettings(this);
@@ -117,6 +119,7 @@ void SettingsManager::registerCustomSettingsGroup(const QString &accessorName, S
 }
 
 ADSBVehicleManagerSettings *SettingsManager::adsbVehicleManagerSettings() const { return _adsbVehicleManagerSettings; }
+SimulationObjectSettings *SettingsManager::simulationObjectSettings() const { return _simulationObjectSettings; }
 APMMavlinkStreamRateSettings *SettingsManager::apmMavlinkStreamRateSettings() const { return _apmMavlinkStreamRateSettings; }
 AppSettings *SettingsManager::appSettings() const { return _appSettings; }
 AutoConnectSettings *SettingsManager::autoConnectSettings() const { return _autoConnectSettings; }

@@ -1,0 +1,79 @@
+# Simulation objects — Phase 1 (read-only)
+
+This is the **dedicated simulation-object receiver**, not a MAVLink missile adapter. It does not produce QGC
+`Vehicle` instances, does not select active aircraft, does not send MAVLink commands, and does not
+create map markers yet (map rendering is Phase 2). Aircraft and NPC MAVLink handling remains unchanged.
+**Stop publishing missile HEARTBEAT messages on the ordinary MAVLink link** before using this mode:
+the older publisher is intentionally unsupported and QGC will still treat its heartbeats as vehicles.
+
+## Configure
+
+The receiver is disabled by default. QGC persists the following Fact settings under the normal
+`SimulationObject` QSettings group:
+
+| Fact | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | false | Enable the simulation UDP receiver |
+| `bindAddress` | `127.0.0.1` | Local numeric listen address |
+| `listenPort` | `14660` | UDP listen port |
+| `allowedSender` | `127.0.0.1` | **Exact** numeric source IP |
+| `producerId` | `qgc-fixture` | Required `source.producer_id` |
+| `completedRetentionMs` | `1000` | Terminal object visibility retention |
+| `staleTimeoutMs` | `2000` | Indicate stale/disconnected |
+| `removalTimeoutMs` | `5000` | Remove inactive objects without completing them |
+
+Phase 1 does not yet add these controls to a settings page. QGC uses Qt `QSettings`, which stores
+application preferences in the Windows user's registry; the `SimulationObject` group can be configured
+there before launching QGC. Prefer a separate QGC settings profile while testing; back up existing keys.
+The settings group will gain a UI in Phase 4.
+
+Loopback is the safe default. For a separate Windows computer, configure `bindAddress` as a specific
+interface address and `allowedSender` as the simulator computer's IP. Do not expose the listener on
+untrusted networks: peer filtering and a self-declared producer ID are **not authentication**. Use a
+VPN or authenticated tunnel for such paths.
+
+Changing the receiver endpoint or producer setting restarts its socket and clears the current objects.
+Changing the retention/stale timeouts takes effect without restarting the receiver.
+
+## Wire and lifecycle
+
+One UTF-8 JSON object per UDP datagram, maximum **1200 bytes**, schema `kernel.qgc.simobjects`,
+version `major:1`, `minor:0`. The initial `session_announce` is mandatory before object updates.
+A newer announced session/epoch replaces the old object set without inventing completion events.
+Late packets from retired sessions, duplicate/out-of-order object sequences, backwards simulation time,
+malformed coordinates, non-finite values and unauthorized sources are rejected.
+
+The immutable object key is `(session_id, epoch, object.id, object.generation)`. A publisher process
+restart alone is not completion. `object_end` is terminal for the same object key; a new generation or
+session is necessary for reuse. Completion retention and network freshness use a monotonic receive clock,
+never the simulation clock. A paused or stationary NPC is not completed. A sender disappearance produces
+stale/disconnected status, not a synthetic intercept.
+
+Objects are bounded to 256 concurrent entries and 4096 remembered per-session sequence/tombstone keys;
+admission fails closed when these limits are reached. For a completed object whose initial states
+were never received, the terminal key is still remembered (no phantom marker is created).
+
+This initial implementation does not yet resolve NPC target bindings against QGC `Vehicle` positions,
+draw engagement lines, interpolate flight paths, or display range. It does validate their versioned
+identity metadata for later phases. Only the receiver/model/lifecycle are implemented here.
+
+## Deterministic test
+
+The Phase 0 standalone Python fixture `qgc_simobjects_fixture.py` works with the v1 protocol.
+Place it on the Windows machine or simulator host, then run:
+
+```powershell
+python .\qgc_simobjects_fixture.py --self-test
+python .\qgc_simobjects_fixture.py --dry-run --duration 33
+python .\qgc_simobjects_fixture.py --duration 33 --rate 30 --overlay-host 127.0.0.1 --overlay-port 14660 --mavlink-host 127.0.0.1 --mavlink-port 14550
+```
+
+The fixture sends NPC aircraft as ordinary MAVLink HEARTBEAT/GLOBAL_POSITION_INT and missiles as
+simulation UDP JSON. No flight-control commands are sent. When running across PCs, replace the
+destination addresses with the Windows computer's reachable IP and configure the receiver/firewall.
+
+Build/tests: `cmake --build --preset Windows-debug` and `ctest --preset Windows-debug -R SimulationObjectTest --output-on-failure`.
+Use the existing locally working CMake presets and Qt toolchain; Phase 1 does not upgrade dependencies.
+
+Disable/revert: set `SimulationObject/enabled=false` (or undo the Phase 1 commit/PR).
+The ordinary MAVLink Vehicle path is unchanged.

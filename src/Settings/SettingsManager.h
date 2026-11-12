@@ -32,6 +32,7 @@ class JoystickManagerSettings;
 class LogManagerSettings;
 class LogViewerSettings;
 class SettingsGroup;
+class SimulationObjectSettings;
 
 /// \brief Provides access to all app settings
 ///
@@ -66,6 +67,7 @@ class SettingsManager : public QQmlPropertyMap
     Q_MOC_INCLUDE("LogViewerSettings.h")
     Q_MOC_INCLUDE("Viewer3DSettings.h")
     Q_PROPERTY(QObject *adsbVehicleManagerSettings      READ adsbVehicleManagerSettings     CONSTANT)
+    Q_PROPERTY(QObject *simulationObjectSettings        READ simulationObjectSettings       CONSTANT)
     Q_PROPERTY(QObject *apmMavlinkStreamRateSettings    READ apmMavlinkStreamRateSettings   CONSTANT)
     Q_PROPERTY(QObject *appSettings                     READ appSettings                    CONSTANT)
     Q_PROPERTY(QObject *autoConnectSettings             READ autoConnectSettings            CONSTANT)
@@ -113,6 +115,7 @@ public:
     void registerCustomSettingsGroup(const QString &accessorName, SettingsGroup *group);
 
     ADSBVehicleManagerSettings *adsbVehicleManagerSettings() const;
+    SimulationObjectSettings *simulationObjectSettings() const;
     APMMavlinkStreamRateSettings *apmMavlinkStreamRateSettings() const;
     AppSettings *appSettings() const;
     AutoConnectSettings *autoConnectSettings() const;
@@ -142,6 +145,7 @@ private:
     void _loadSettingsFiles();
 
     ADSBVehicleManagerSettings *_adsbVehicleManagerSettings = nullptr;
+    SimulationObjectSettings *_simulationObjectSettings = nullptr;
     APMMavlinkStreamRateSettings *_apmMavlinkStreamRateSettings = nullptr;
     AppSettings *_appSettings = nullptr;
     AutoConnectSettings *_autoConnectSettings = nullptr;
