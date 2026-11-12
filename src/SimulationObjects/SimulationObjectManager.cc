@@ -89,7 +89,11 @@ void SimulationObjectManager::initialize()
 void SimulationObjectManager::_restart()
 {
     stop();
-    if (!_settings || !_settings->enabled()->rawValue().toBool()) {
+    if (!_settings) {
+        return;
+    }
+    if (!_settings->enabled()->rawValue().toBool()) {
+        qCDebug(SimulationObjectLog) << "Simulation receiver disabled";
         return;
     }
     QHostAddress bindAddress;
