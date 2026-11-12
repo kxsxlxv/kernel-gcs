@@ -35,6 +35,11 @@ void MapTrailHistory::setLifetimeMs(int ms)
     }
     _lifetimeMs = ms;
     expireAt(_clock.elapsed());
+    if (_lifetimeMs == 0) {
+        _timer.stop();
+    } else if (!_samples.isEmpty() && !_timer.isActive()) {
+        _timer.start();
+    }
     emit lifetimeMsChanged();
     emit fadingChanged();
 }
@@ -73,7 +78,7 @@ void MapTrailHistory::appendAt(const QGeoCoordinate& coordinate, qint64 nowMs)
         emit pointAppended(coordinate);
     }
     emit changed();
-    if (!_timer.isActive()) {
+    if (_lifetimeMs > 0 && !_timer.isActive()) {
         _timer.start();
     }
     expireAt(nowMs);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QtCore/QElapsedTimer>
+#include <QtCore/QList>
 #include <QtCore/QObject>
 #include <QtCore/QTimer>
 #include <QtCore/QVariantList>

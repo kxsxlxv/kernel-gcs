@@ -131,7 +131,7 @@ GeoMapItem {
 
     MapTrailHistory {
         id: trailHistory
-        enabled: root._enabled
+        enabled: root._enabled && root._style !== "none"
         lifetimeMs: root._lifetimeMs
         onPointAppended: (coordinate) => {
             if (root._geometry) {

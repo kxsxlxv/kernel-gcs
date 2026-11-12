@@ -64,7 +64,7 @@ Item {
 
     MapTrailHistory {
         id: trailHistory
-        enabled: root.trailEnabled
+        enabled: root.trailEnabled && root.trailStyle !== "none"
         lifetimeMs: root.trailLifetimeMs
 
         onPointAppended: trailCanvas.requestPaint()
@@ -107,7 +107,7 @@ Item {
     Canvas {
         id: trailCanvas
         anchors.fill: parent
-        renderTarget: Canvas.FramebufferObject
+        renderTarget: Canvas.Image
         renderStrategy: Canvas.Cooperative
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
@@ -149,6 +149,9 @@ Item {
                     const b = projected[i]
                     if (!isFinite(a.x) || !isFinite(a.y) || !isFinite(b.x) || !isFinite(b.y)
                             || Math.abs(a.x - b.x) > width * 0.8) {
+                        continue
+                    }
+                    if (a.x === b.x && a.y === b.y) {
                         continue
                     }
                     const gradient = ctx.createLinearGradient(a.x, a.y, b.x, b.y)
