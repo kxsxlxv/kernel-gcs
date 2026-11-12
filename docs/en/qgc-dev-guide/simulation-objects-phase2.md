@@ -40,20 +40,71 @@ ctest --preset Windows-debug -R SimulationObjectTest --output-on-failure
 python .\tools\simobjects\phase1_publisher.py --self-test
 ```
 
-Enable `SimulationObject/enabled=true` in the normal QGC INI settings profile, as
-described in [Phase 1](simulation-objects-phase1.md). Start QGC with `run-qgc.ps1`
-and run the publisher in another terminal:
+### Use existing simulator NPCs (no synthetic MAVLink aircraft)
 
-```powershell
-python .\tools\simobjects\phase1_publisher.py --duration 33 --rate 30
+**Enable the separate overlay receiver first.** It defaults to disabled. Close QGC,
+back up its INI preferences, then add/edit the following section in QGC's actual
+settings file (look for the `Settings location` log message with application
+logging enabled; see [Phase 1](simulation-objects-phase1.md) for configuration details):
+
+```ini
+[SimulationObject]
+enabled=true
+bindAddress=127.0.0.1
+listenPort=14660
+allowedSender=127.0.0.1
+producerId=qgc-fixture
 ```
 
-Zoom the Fly View map near the fixture's coordinates; verify one labeled missile
-marker updates, does not become a `Vehicle`, and never creates a vehicle dialog.
-Confirm multiple ordinary MAVLink vehicles still connect normally. Verify markers
-vanish on null position, expire on stale/disconnected and completion, and clear
-on session reset. Repeat once with `useGeoMapEngine` enabled (requires QGC restart)
-to exercise GeoMap.
+Restart QGC and start the **two real moving NPCs** through your normal MAVLink
+simulator. The QGC fixture now sends **missile-only JSON by default**: it creates
+no fake MAVLink NPCs and no extra simulation `npc` objects. Run it only after
+QGC is open, in another terminal:
+
+```powershell
+python .\tools\simobjects\phase1_publisher.py --duration 60 --rate 30
+```
+
+The default fixture launch point is near **Riga, Latvia**
+(latitude `56.95`, longitude `24.11`). If your real NPCs are flying elsewhere,
+provide **their approximate map-area coordinates** so test missile markers
+appear on the same map:
+
+```powershell
+python .\tools\simobjects\phase1_publisher.py --duration 60 --rate 30 --center-lat 56.95 --center-lon 24.11
+```
+
+Replace those two Riga numbers with your real simulator area. The missile paths
+are scripted test motion near that center, **not** launches from, guidance
+towards or tracking of the actual two NPCs. Only a real simulator's missile
+producer can send authoritative missile trajectories.
+
+If you explicitly need the old full synthetic test, add `--with-fixture-npcs`.
+That opt-in sends `npc-11`/`npc-12` over MAVLink port `14550` and adds them
+to the overlay; **do not use it with your real moving NPCs**.
+
+### Troubleshooting invisible missile markers
+
+1. Run QGC with `--logging=SimulationObjects.Manager --log-output` to see
+   receiver and object-admission diagnostics. A working receiver logs
+   `Simulation receiver listening` on the configured endpoint and
+   `Simulation object created` when packets arrive.
+2. The fixture sends from `127.0.0.1` with producer ID `qgc-fixture` to
+   port `14660` unless overridden. The configured allowed sender, producer
+   ID, and listener must match the actual source. For another PC, use
+   appropriately configured **trusted** interface/peer addresses.
+3. Zoom Fly View near the fixture center **while the publisher is running**.
+   The default duration is finite; after stopping, the Phase 1 expiration
+   timer removes its markers. If the log shows object creation but no marker,
+   check for QML runtime warnings and verify the current Phase 2 binary is launched.
+4. With `ctest --preset Windows-debug -R SimulationObjectTest --output-on-failure`
+   confirm the underlying data model still passes. This alone does not verify
+   the QML overlay visually.
+
+Verify one or more labeled missile markers move separately from the normal
+MAVLink aircraft, without additional vehicle dialogs. Verify completion,
+stale/disconnected display, session reset, and both Fly View map engines
+(`useGeoMapEngine` requires a restart).
 
 The receiver is opt-in; disabled/default configuration continues to show no
 simulation markers. On separate machines configure the allowed sender, listen
