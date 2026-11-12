@@ -1,0 +1,73 @@
+{
+    "version": 1,
+    "fileType": "SettingsUI",
+    "groups": [
+        {
+            "heading": "Simulation Receiver",
+            "keywords": [
+                "simulation",
+                "sim objects",
+                "missile markers",
+                "udp",
+                "receiver",
+                "listen",
+                "port",
+                "network",
+                "source"
+            ],
+            "controls": [
+                {
+                    "setting": "simulationObjectSettings.enabled"
+                },
+                {
+                    "setting": "simulationObjectSettings.bindAddress"
+                },
+                {
+                    "setting": "simulationObjectSettings.listenPort"
+                },
+                {
+                    "setting": "simulationObjectSettings.allowedSender"
+                },
+                {
+                    "setting": "simulationObjectSettings.producerId"
+                }
+            ]
+        },
+        {
+            "heading": "Display and Notifications",
+            "keywords": [
+                "simulation",
+                "notifications",
+                "connected",
+                "vehicle popups"
+            ],
+            "controls": [
+                {
+                    "setting": "simulationObjectSettings.suppressVehicleConnectedPopups"
+                }
+            ]
+        },
+        {
+            "heading": "Track Retention",
+            "keywords": [
+                "simulation",
+                "timeout",
+                "stale",
+                "remove",
+                "completion",
+                "retention"
+            ],
+            "controls": [
+                {
+                    "setting": "simulationObjectSettings.staleTimeoutMs"
+                },
+                {
+                    "setting": "simulationObjectSettings.removalTimeoutMs"
+                },
+                {
+                    "setting": "simulationObjectSettings.completedRetentionMs"
+                }
+            ]
+        }
+    ]
+}

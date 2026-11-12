@@ -30,6 +30,12 @@
             "pageDefinition": "ADSBVehicleManager.SettingsUI.json"
         },
         {
+            "name": "Simulation Objects",
+            "qml": "SimulationObjectsPage.qml",
+            "icon": "qrc:/InstrumentValueIcons/radar.svg",
+            "pageDefinition": "SimulationObjects.SettingsUI.json"
+        },
+        {
             "name": "Comm Links",
             "qml": "CommLinksSettings.qml",
             "icon": "qrc:/InstrumentValueIcons/usb.svg",
