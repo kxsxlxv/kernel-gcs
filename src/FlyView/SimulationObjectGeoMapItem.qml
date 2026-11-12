@@ -12,7 +12,7 @@ GeoMapItem {
     objectName: "simulationMissileGeoMapItem"
 
     property var simulationObject
-    property real markerSize: ScreenTools.defaultFontPixelHeight * 2
+    property real markerSize: ScreenTools.defaultFontPixelHeight * 2.5
     property bool showLabel: true
     property real homeTerrainBias: 0
 
@@ -49,11 +49,17 @@ GeoMapItem {
         objectId: root.simulationObject ? root.simulationObject.objectId : ""
         lifecycle: root.simulationObject ? root.simulationObject.lifecycle : ""
         showLabel: root.showLabel
+        heading: root.simulationObject && root.simulationObject.headingValid
+                 ? root.simulationObject.heading + (root._camera ? root._camera.heading : 0) : 0
+        headingValid: root.simulationObject ? root.simulationObject.headingValid : false
         opacity: root.contentOpacity2D * root._statusOpacity
     }
 
     delegate3D: Component {
         Node {
+            // Scene z is up; positive geographic heading is clockwise.
+            eulerRotation.z: root.simulationObject && root.simulationObject.headingValid
+                             ? -root.simulationObject.heading : 0
             scale: Qt.vector3d(root._quadScale, root._quadScale, 1)
 
             Model {
@@ -67,6 +73,7 @@ GeoMapItem {
                         sourceItem: SimulationObjectMarker {
                             size: 96
                             showLabel: false
+                            headingValid: true  // The containing 3D Node supplies heading rotation.
                             lifecycle: root.simulationObject ? root.simulationObject.lifecycle : ""
                         }
                     }

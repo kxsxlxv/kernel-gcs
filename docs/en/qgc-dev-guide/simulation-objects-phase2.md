@@ -7,12 +7,19 @@ engagement geometry are added.
 
 ## Display behavior
 
-- **Missiles** (`object.kind = "missile"`) with `positionValid = true` appear as orange
-  diamond markers marked **M**, with the simulation object ID alongside the marker.
+- **Missiles** (`object.kind = "missile"`) with `positionValid = true` appear as
+  high-contrast, north-up silhouette artwork rotated to the missile's **course over
+  ground**, with the simulation object ID in a separate, upright label.
   `object.kind = "npc"` is **not** drawn a second time; NPC aircraft remain in QGC's
   existing MAVLink vehicle layer.
-- State updates move the existing marker without creating another QML item. A
-  new `generation` or `session_id` is a distinct model identity.
+- State updates move and turn the existing marker without creating another QML
+  item. Direction comes from horizontal NED velocity when speed is at least
+  0.5 m/s; otherwise the last valid heading is retained. With missing velocity,
+  successive valid coordinates provide a heading if movement is at least 1 m
+  and 0.5 m/s. An unknown heading is indicated with `?` in the label; it is
+  never claimed to be north. Headings are normalized to 0–360 degrees and
+  handle the 359°/0° transition. A new `generation` or `session_id` is a
+  distinct model identity.
 - Missing/null positions hide markers, rather than showing retained coordinates
   as current. Stale and disconnected markers remain at last-known valid positions
   but turn grey with status in their labels. Completed markers dim and are removed
@@ -113,8 +120,12 @@ to the overlay; **do not use it with your real moving NPCs**.
    confirm the underlying data model still passes. This alone does not verify
    the QML overlay visually.
 
-Verify one or more labeled missile markers move separately from the normal
-MAVLink aircraft, without additional vehicle dialogs. Verify completion,
+Verify one or more labeled missile silhouettes move and rotate in the direction
+of travel separately from the normal MAVLink aircraft, without additional vehicle dialogs.
+The missile's nose must point north for NED (north, east) = (95, 0),
+east for (0, 95), south for (-95, 0), and west for (0, -95).
+Check transitions across 359°/0°, and confirm stale/completed icons dim
+without changing their last reliable direction. Verify completion,
 stale/disconnected display, session reset, and both Fly View map engines
 (`useGeoMapEngine` requires a restart).
 
@@ -124,7 +135,7 @@ interface and publisher destination according to the Phase 1 contract.
 
 ## Scope boundary
 
-Missile heading is not inferred in Phase 2; the diamond marker deliberately
-does not imply a vehicle orientation. Target binding, LOS/range, engagement panels
-and settings UI belong to subsequent phases. The normal `run-qgc.ps1` is not
+Missile heading is read-only visual orientation, not an autopilot command or
+a target solution. Target binding, LOS/range, engagement panels and settings UI
+belong to subsequent phases. The normal `run-qgc.ps1` is not
 modified by this work.

@@ -30,6 +30,8 @@ class SimulationObject : public QObject
     Q_PROPERTY(QGeoCoordinate coordinate READ coordinate NOTIFY changed)
     Q_PROPERTY(bool positionValid READ positionValid NOTIFY changed)
     Q_PROPERTY(QString altitudeDatum READ altitudeDatum NOTIFY changed)
+    Q_PROPERTY(double heading READ heading NOTIFY changed)
+    Q_PROPERTY(bool headingValid READ headingValid NOTIFY changed)
     Q_PROPERTY(QString motionState READ motionState NOTIFY changed)
     Q_PROPERTY(QString completionReason READ completionReason NOTIFY changed)
 
@@ -47,6 +49,8 @@ public:
     QGeoCoordinate coordinate() const { return _coordinate; }
     bool positionValid() const { return _positionValid; }
     QString altitudeDatum() const { return _altitudeDatum; }
+    double heading() const { return _heading; }
+    bool headingValid() const { return _headingValid; }
     QString motionState() const { return _motionState; }
     QString completionReason() const { return _completionReason; }
 
@@ -71,6 +75,9 @@ private:
     QGeoCoordinate _coordinate;
     bool _positionValid = false;
     QString _altitudeDatum;
+    double _heading = 0;
+    bool _headingValid = false;
+    quint64 _lastPositionSimTimeNs = 0;
     QString _motionState = QStringLiteral("unknown");
     QString _completionReason;
     qint64 _lastReceiveMs = 0;

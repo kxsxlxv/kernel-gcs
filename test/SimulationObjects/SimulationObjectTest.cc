@@ -1,5 +1,7 @@
 #include "SimulationObjectTest.h"
 
+#include <cmath>
+
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QScopeGuard>
@@ -106,6 +108,9 @@ void SimulationObjectTest::_validatesProtocol()
     QCOMPARE(decoded.targetId, QStringLiteral("npc-11"));
     QVERIFY(decoded.positionValid);
     QCOMPARE(decoded.altitudeDatum, QStringLiteral("AMSL_EGM96"));
+    QVERIFY(decoded.velocityValid);
+    QCOMPARE(decoded.northMps, 95.0);
+    QCOMPARE(decoded.eastMps, 0.0);
 
     QJsonObject invalid = valid;
     invalid.insert(QStringLiteral("major"), 2);
@@ -210,6 +215,106 @@ void SimulationObjectTest::_mapProjectionMetadata()
     QVERIFY(npcObject);
     QCOMPARE(npcObject->kind(), QStringLiteral("npc"));
     QVERIFY(npcObject->positionValid());
+}
+
+void SimulationObjectTest::_headingFromVelocity()
+{
+    auto* settings = SettingsManager::instance()->simulationObjectSettings();
+    Fact* const enabled = settings->enabled();
+    const QVariant original = enabled->rawValue();
+    const auto restore = qScopeGuard([enabled, original]() { enabled->setRawValue(original); });
+    enabled->setRawValue(true);
+    SimulationObjectManager manager(settings);
+    const QHostAddress peer(QHostAddress::LocalHost);
+
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession1)), peer));
+
+    const auto sendVelocity = [&](int seq, double northMps, double eastMps) {
+        QJsonObject update = state(kSession1, seq);
+        QJsonObject velocity = update.value(QStringLiteral("velocity")).toObject();
+        velocity.insert(QStringLiteral("north_mps"), northMps);
+        velocity.insert(QStringLiteral("east_mps"), eastMps);
+        update.insert(QStringLiteral("velocity"), velocity);
+        return manager.acceptDatagram(packet(update), peer);
+    };
+
+    QVERIFY(sendVelocity(1, 95, 0));
+    SimulationObject* const missile = manager.objectFor(kSession1, 1, QStringLiteral("missile-1"), 1);
+    QVERIFY(missile);
+    QVERIFY(missile->headingValid());
+    QCOMPARE(missile->heading(), 0.0);
+
+    QVERIFY(sendVelocity(2, 0, 95));
+    QCOMPARE_NEAR(missile->heading(), 90.0, 0.001);
+
+    QVERIFY(sendVelocity(3, -95, 0));
+    QCOMPARE_NEAR(missile->heading(), 180.0, 0.001);
+
+    QVERIFY(sendVelocity(4, 0, -95));
+    QCOMPARE_NEAR(missile->heading(), 270.0, 0.001);
+
+    QVERIFY(sendVelocity(5, 100, -1.7455));
+    QCOMPARE_NEAR(missile->heading(), 359.0, 0.01);
+
+    QVERIFY(sendVelocity(6, 100, 1.7455));
+    QCOMPARE_NEAR(missile->heading(), 1.0, 0.01);
+
+    QVERIFY(sendVelocity(7, 0.1, 0.1));
+    QCOMPARE_NEAR(missile->heading(), 1.0, 0.01);
+
+    QVERIFY(manager.acceptDatagram(packet(ended(kSession1, 8)), peer));
+    QCOMPARE_NEAR(missile->heading(), 1.0, 0.01);
+}
+
+void SimulationObjectTest::_headingFromCoordinates()
+{
+    auto* settings = SettingsManager::instance()->simulationObjectSettings();
+    Fact* const enabled = settings->enabled();
+    const QVariant original = enabled->rawValue();
+    const auto restore = qScopeGuard([enabled, original]() { enabled->setRawValue(original); });
+    enabled->setRawValue(true);
+    SimulationObjectManager manager(settings);
+    const QHostAddress peer(QHostAddress::LocalHost);
+
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession1)), peer));
+
+    const auto sendPosition = [&](int seq, double lat, double lon, quint64 timeNs, bool validPosition = true) {
+        QJsonObject update = state(kSession1, seq);
+        update.insert(QStringLiteral("sim_time_ns"), QString::number(timeNs));
+        update.remove(QStringLiteral("velocity"));
+        if (validPosition) {
+            QJsonObject position = update.value(QStringLiteral("position")).toObject();
+            position.insert(QStringLiteral("lat_deg"), lat);
+            position.insert(QStringLiteral("lon_deg"), lon);
+            update.insert(QStringLiteral("position"), position);
+        } else {
+            update.insert(QStringLiteral("position"), QJsonValue::Null);
+        }
+        return manager.acceptDatagram(packet(update), peer);
+    };
+
+    QVERIFY(sendPosition(1, 56.95, 24.11, 250000000));
+    SimulationObject* const missile = manager.objectFor(kSession1, 1, QStringLiteral("missile-1"), 1);
+    QVERIFY(missile);
+    QVERIFY(!missile->headingValid());
+
+    QVERIFY(sendPosition(2, 56.95, 24.1101, 1250000000));
+    QVERIFY(missile->headingValid());
+    QCOMPARE_NEAR(missile->heading(), 90.0, 0.01);
+
+    QVERIFY(sendPosition(3, 56.9501, 24.1101, 2250000000));
+    QCOMPARE_NEAR(missile->heading(), 0.0, 0.01);
+
+    QVERIFY(sendPosition(4, 56.9501, 24.1101, 3250000000));
+    QCOMPARE_NEAR(missile->heading(), 0.0, 0.01);
+
+    QVERIFY(sendPosition(5, 56.9501, 24.1101, 4250000000, false));
+    QVERIFY(!missile->positionValid());
+    QVERIFY(missile->headingValid());
+
+    // Do not infer a heading across an interval in which the position was invalid.
+    QVERIFY(sendPosition(6, 56.9501, 24.1102, 5250000000));
+    QCOMPARE_NEAR(missile->heading(), 0.0, 0.01);
 }
 
 void SimulationObjectTest::_staleAndDisconnect()

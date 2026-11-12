@@ -11,7 +11,7 @@ MapQuickItem {
     objectName: "simulationMissileMapItem"
 
     property var simulationObject
-    property real markerSize: ScreenTools.defaultFontPixelHeight * 2
+    property real markerSize: ScreenTools.defaultFontPixelHeight * 2.5
     property bool showLabel: true
 
     coordinate: simulationObject && simulationObject.positionValid
@@ -28,6 +28,8 @@ MapQuickItem {
         objectId: root.simulationObject ? root.simulationObject.objectId : ""
         lifecycle: root.simulationObject ? root.simulationObject.lifecycle : ""
         showLabel: root.showLabel
+        heading: root.simulationObject ? root.simulationObject.heading : 0
+        headingValid: root.simulationObject ? root.simulationObject.headingValid : false
         opacity: lifecycle === "active" ? 1 : lifecycle === "completed" ? 0.35 : 0.55
     }
 }
