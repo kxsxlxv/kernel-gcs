@@ -165,26 +165,29 @@ FlightMap {
         showText: !pipMode
     }
 
-    // Add trajectory lines to the map
-    MapPolyline {
-        id:         trajectoryPolyline
-        line.width: 3
-        line.color: "red"
-        z:          QGroundControl.zOrderTrajectoryLines
-        visible:    !pipMode
-
-        Connections {
-            target:                 QGroundControl.multiVehicleManager
-            function onActiveVehicleChanged(activeVehicle) {
-                trajectoryPolyline.path = _activeVehicle ? _activeVehicle.trajectoryPoints.list() : []
-            }
+    // The trail history is independent of Vehicle::trajectoryPoints (flight distance).
+    // Fixed QML renderer count: one canvas per tracked object, never one item per sample.
+    Repeater {
+        model: QGroundControl.multiVehicleManager.vehicles
+        delegate: MapTrailCanvas {
+            anchors.fill: _root
+            mapView: _root
+            trackedObject: object
+            simulated: false
+            visible: !pipMode
+            z: QGroundControl.zOrderTrajectoryLines
         }
+    }
 
-        Connections {
-            target:                             _activeVehicle ? _activeVehicle.trajectoryPoints : null
-            function onPointAdded(coordinate) { trajectoryPolyline.addCoordinate(coordinate) }
-            function onUpdateLastPoint(coordinate) { trajectoryPolyline.replaceCoordinate(trajectoryPolyline.pathLength() - 1, coordinate) }
-            function onPointsCleared() { trajectoryPolyline.path = [] }
+    Repeater {
+        model: QGroundControl.simulationObjects
+        delegate: MapTrailCanvas {
+            anchors.fill: _root
+            mapView: _root
+            trackedObject: object
+            simulated: true
+            visible: !pipMode
+            z: QGroundControl.zOrderTrajectoryLines + 0.1
         }
     }
 
