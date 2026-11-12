@@ -4,6 +4,7 @@
 
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QtCore/QRegularExpression>
 #include <QtCore/QScopeGuard>
 #include <QtNetwork/QHostAddress>
 #include <QtNetwork/QUdpSocket>
