@@ -72,6 +72,11 @@ identity metadata for later phases. Only the receiver/model/lifecycle are implem
 
 ## Deterministic test
 
+To observe Phase 1's deliberately nonvisual model, launch the existing Windows QGC executable with
+`--logging=SimulationObjects.Manager --log-output`. It logs admitted sessions and object creation,
+explicit completion and removal, without printing every 30 Hz position update. A regular aircraft
+still uses QGC's existing `Vehicle`/MAVLink handling; Phase 2 will add map markers.
+
 The Phase 0 standalone Python fixture `qgc_simobjects_fixture.py` works with the v1 protocol.
 Place it on the Windows machine or simulator host, then run:
 
