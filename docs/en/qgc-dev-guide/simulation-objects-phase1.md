@@ -14,6 +14,7 @@ The receiver is disabled by default. QGC persists the following Fact settings un
 | Fact | Default | Meaning |
 | --- | --- | --- |
 | `enabled` | false | Enable the simulation UDP receiver |
+| `suppressVehicleConnectedPopups` | true | While enabled, suppress noncritical \`Connected to Vehicle\` dialogs; critical warnings remain |
 | `bindAddress` | `127.0.0.1` | Local numeric listen address |
 | `listenPort` | `14660` | UDP listen port |
 | `allowedSender` | `127.0.0.1` | **Exact** numeric source IP |
@@ -76,4 +77,4 @@ Build/tests: `cmake --build --preset Windows-debug` and `ctest --preset Windows-
 Use the existing locally working CMake presets and Qt toolchain; Phase 1 does not upgrade dependencies.
 
 Disable/revert: set `SimulationObject/enabled=false` (or undo the Phase 1 commit/PR).
-The ordinary MAVLink Vehicle path is unchanged.
+The ordinary MAVLink Vehicle path is unchanged except for the separately configurable, simulation-mode-only informational connection dialog suppression.

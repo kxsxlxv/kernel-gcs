@@ -15,6 +15,7 @@ public:
     DEFINE_SETTING_NAME_GROUP()
 
     DEFINE_SETTINGFACT(enabled)
+    DEFINE_SETTINGFACT(suppressVehicleConnectedPopups)
     DEFINE_SETTINGFACT(bindAddress)
     DEFINE_SETTINGFACT(listenPort)
     DEFINE_SETTINGFACT(allowedSender)

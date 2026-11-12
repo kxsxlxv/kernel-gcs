@@ -20,7 +20,7 @@ bool decimal(const QJsonValue& value, quint64& result)
         return false;
     }
     for (const QChar character : string) {
-        if (character < QLatin1Char('0') || character > QLatin1Char('9')) {
+        if (character.unicode() < '0' || character.unicode() > '9') {
             return false;
         }
     }
@@ -305,7 +305,7 @@ bool SimulationObjectProtocol::decode(const QByteArray& bytes, Packet& packet)
             return false;
         }
         if (parsed.message == Message::End) {
-            if (!identifier(root.value(QStringLiteral("reason")), parsed.motionState)) {
+            if (!identifier(root.value(QStringLiteral("reason")), parsed.completionReason)) {
                 return false;
             }
         } else {

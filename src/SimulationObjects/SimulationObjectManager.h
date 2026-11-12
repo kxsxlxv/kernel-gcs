@@ -3,6 +3,7 @@
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QHash>
 #include <QtCore/QObject>
+#include <QtQmlIntegration/QtQmlIntegration>
 #include <QtCore/QSet>
 #include <QtCore/QTimer>
 #include <QtNetwork/QHostAddress>
@@ -29,6 +30,7 @@ class SimulationObject : public QObject
     Q_PROPERTY(QGeoCoordinate coordinate READ coordinate NOTIFY changed)
     Q_PROPERTY(bool positionValid READ positionValid NOTIFY changed)
     Q_PROPERTY(QString motionState READ motionState NOTIFY changed)
+    Q_PROPERTY(QString completionReason READ completionReason NOTIFY changed)
 
 public:
     explicit SimulationObject(const SimulationObjectProtocol::Packet& packet, QObject* parent = nullptr);
@@ -44,6 +46,7 @@ public:
     QGeoCoordinate coordinate() const { return _coordinate; }
     bool positionValid() const { return _positionValid; }
     QString motionState() const { return _motionState; }
+    QString completionReason() const { return _completionReason; }
 
 signals:
     void changed();
@@ -66,6 +69,7 @@ private:
     QGeoCoordinate _coordinate;
     bool _positionValid = false;
     QString _motionState = QStringLiteral("unknown");
+    QString _completionReason;
     qint64 _lastReceiveMs = 0;
     qint64 _completedMs = -1;
 };
@@ -74,6 +78,7 @@ private:
 class SimulationObjectManager : public QObject
 {
     Q_OBJECT
+    Q_MOC_INCLUDE("QmlObjectListModel.h")
     Q_PROPERTY(QmlObjectListModel* objects READ objects CONSTANT)
 
 public:

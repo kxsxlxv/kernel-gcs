@@ -22,6 +22,7 @@ struct Packet {
     quint64 generation = 0;
     QString kind;
     QString motionState;
+    QString completionReason;
     QString targetId;
     quint64 targetGeneration = 0;
     bool targetValid = false;

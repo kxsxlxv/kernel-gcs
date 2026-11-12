@@ -10,6 +10,13 @@
             "shortDesc": "Receive read-only simulation object traffic on an explicit UDP socket."
         },
         {
+            "name": "suppressVehicleConnectedPopups",
+            "type": "bool",
+            "default": true,
+            "label": "Suppress informational vehicle connection dialogs in simulation mode",
+            "shortDesc": "When the simulation object receiver is enabled, avoid the noncritical Connected to Vehicle popup. Other warnings remain enabled."
+        },
+        {
             "name": "bindAddress",
             "type": "string",
             "default": "127.0.0.1",

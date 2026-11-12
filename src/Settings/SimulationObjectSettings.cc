@@ -5,6 +5,7 @@ DECLARE_SETTINGGROUP(SimulationObject, "SimulationObject")
 }
 
 DECLARE_SETTINGSFACT(SimulationObjectSettings, enabled)
+DECLARE_SETTINGSFACT(SimulationObjectSettings, suppressVehicleConnectedPopups)
 DECLARE_SETTINGSFACT(SimulationObjectSettings, bindAddress)
 DECLARE_SETTINGSFACT(SimulationObjectSettings, listenPort)
 DECLARE_SETTINGSFACT(SimulationObjectSettings, allowedSender)

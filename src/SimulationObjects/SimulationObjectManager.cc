@@ -4,6 +4,7 @@
 
 #include <QtCore/QApplicationStatic>
 #include <QtNetwork/QUdpSocket>
+#include <QtNetwork/QNetworkDatagram>
 
 #include "Fact.h"
 #include "QmlObjectListModel.h"
@@ -30,6 +31,7 @@ void SimulationObject::_apply(const SimulationObjectProtocol::Packet& packet, qi
 {
     _lastReceiveMs = receiveMs;
     _motionState = packet.motionState.isEmpty() ? QStringLiteral("unknown") : packet.motionState;
+    _completionReason.clear();
     _targetId = packet.targetId;
     _targetValid = packet.targetValid;
     // The old coordinate may remain for last-known display, but is never marked current.
@@ -202,6 +204,7 @@ bool SimulationObjectManager::acceptDatagram(const QByteArray& bytes, const QHos
             _clearObjects();
             _watermarks.clear();
             _activeSession = incomingSession;
+            qCDebug(SimulationObjectLog) << "Simulation session admitted" << _activeSession;
             _activeEpoch = packet.epoch;
             _hasAnnouncement = true;
             _lastAnnouncementSeq = packet.sessionSeq;
@@ -252,6 +255,8 @@ bool SimulationObjectManager::acceptDatagram(const QByteArray& bytes, const QHos
         watermark->ended = true;
         if (object) {
             object->_completedMs = now;
+            object->_completionReason = packet.completionReason;
+            qCDebug(SimulationObjectLog) << "Simulation object ended" << packet.id << packet.completionReason;
             object->_setLifecycle(QStringLiteral("completed"));
         }
         return true;
@@ -265,6 +270,7 @@ bool SimulationObjectManager::acceptDatagram(const QByteArray& bytes, const QHos
         object->_identityKey = key;
         _entries.insert(key, object);
         _objects->append(object);
+        qCDebug(SimulationObjectLog) << "Simulation object created" << packet.id << packet.kind;
     }
     object->_apply(packet, now);
     return true;
@@ -289,6 +295,7 @@ void SimulationObjectManager::expireAt(qint64 nowMs)
         if (age >= (completed ? retention : removal)) {
             _entries.remove(object->_identityKey);
             _objects->removeAt(i);
+            qCDebug(SimulationObjectLog) << "Simulation object pruned" << object->objectId() << object->lifecycle();
             object->deleteLater();
         } else if (!completed && age >= stale) {
             object->_setLifecycle(sourceDisconnected ? QStringLiteral("disconnected") : QStringLiteral("stale"));

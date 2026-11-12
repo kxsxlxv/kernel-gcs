@@ -42,6 +42,7 @@ class SettingsManager : public QQmlPropertyMap
     QML_ELEMENT
     QML_UNCREATABLE("")
     Q_MOC_INCLUDE("ADSBVehicleManagerSettings.h")
+    Q_MOC_INCLUDE("SimulationObjectSettings.h")
     Q_MOC_INCLUDE("APMMavlinkStreamRateSettings.h")
     Q_MOC_INCLUDE("AppSettings.h")
     Q_MOC_INCLUDE("AutoConnectSettings.h")
