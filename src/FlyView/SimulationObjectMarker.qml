@@ -20,7 +20,7 @@ Item {
     // Show the numeric suffix for canonical missile IDs, preserving the full
     // objectId in the model for identity, logs, and session tracking.
     readonly property string displayNumber: {
-        const match = /^missile[-_](\\d+)$/i.exec(objectId)
+        const match = /^missile[-_](\d+)$/i.exec(objectId)
         return match ? match[1] : objectId
     }
 
