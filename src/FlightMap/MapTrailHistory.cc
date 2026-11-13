@@ -66,7 +66,12 @@ void MapTrailHistory::appendAt(const QGeoCoordinate& coordinate, qint64 nowMs)
             return;
         }
     }
+    const bool isFirstSample = _samples.isEmpty();
     _samples.append({coordinate, nowMs});
+    if (isFirstSample) {
+        _renderAnchor = coordinate;
+        emit renderAnchorChanged();
+    }
     bool truncated = false;
     while (_samples.size() > kMaxSamples) {
         _samples.removeFirst();
@@ -101,18 +106,39 @@ void MapTrailHistory::expireAt(qint64 nowMs)
     }
     if (_samples.isEmpty()) {
         _timer.stop();
+        if (_renderAnchor.isValid()) {
+            _renderAnchor = QGeoCoordinate();
+            emit renderAnchorChanged();
+        }
     }
 }
 
 void MapTrailHistory::clear()
 {
     _timer.stop();
-    if (_samples.isEmpty()) {
+    if (_samples.isEmpty() && !_renderAnchor.isValid()) {
         return;
     }
     _samples.clear();
+    if (_renderAnchor.isValid()) {
+        _renderAnchor = QGeoCoordinate();
+        emit renderAnchorChanged();
+    }
     emit pathRebuilt();
     emit changed();
+}
+
+void MapTrailHistory::rebaseToLatest()
+{
+    if (_samples.isEmpty()) {
+        return;
+    }
+    const QGeoCoordinate& newest = _samples.last().coordinate;
+    if (_renderAnchor == newest) {
+        return;
+    }
+    _renderAnchor = newest;
+    emit renderAnchorChanged();
 }
 
 QVariantList MapTrailHistory::coordinates() const

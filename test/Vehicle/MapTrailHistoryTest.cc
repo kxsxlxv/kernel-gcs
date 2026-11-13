@@ -15,27 +15,53 @@ const QGeoCoordinate kOrigin(43.41, 39.94, 100.0);
 void MapTrailHistoryTest::_renderAnchor()
 {
     MapTrailHistory history;
+    QSignalSpy anchorChanges(&history, &MapTrailHistory::renderAnchorChanged);
     QVERIFY(!history.renderAnchor().isValid());
 
     const QGeoCoordinate next = kOrigin.atDistanceAndAzimuth(25, 90);
+    const QGeoCoordinate farther = kOrigin.atDistanceAndAzimuth(50, 90);
     history.setLifetimeMs(1000);
     history.appendAt(kOrigin, 0);
     QCOMPARE(history.renderAnchor(), kOrigin);
+    QCOMPARE(anchorChanges.size(), 1);
+
+    // Neither telemetry nor rolling-window expiration should change the
+    // native geographic anchor, which otherwise makes the trail jump for a
+    // frame while QML waits for a scheduled mesh update.
     history.appendAt(next, 200);
-    QCOMPARE(history.renderAnchor(), next);
-
-    // Removing the first sample cannot move the native map anchor.
+    history.appendAt(farther, 400);
+    QCOMPARE(history.renderAnchor(), kOrigin);
+    QCOMPARE(anchorChanges.size(), 1);
     history.expireAt(1100);
-    QCOMPARE(history.count(), 1);
-    QCOMPARE(history.renderAnchor(), next);
+    QCOMPARE(history.count(), 2);
+    QCOMPARE(history.renderAnchor(), kOrigin);
+    QCOMPARE(anchorChanges.size(), 1);
 
-    history.expireAt(1300);
+    // The renderer can explicitly rebase when the path reaches the edge.
+    history.rebaseToLatest();
+    QCOMPARE(history.renderAnchor(), farther);
+    QCOMPARE(anchorChanges.size(), 2);
+    history.rebaseToLatest();
+    QCOMPARE(anchorChanges.size(), 2);
+
+    const QGeoCoordinate resumed = kOrigin.atDistanceAndAzimuth(75, 90);
+    history.appendAt(resumed, 1200);
+    QCOMPARE(history.renderAnchor(), farther);
+    QCOMPARE(anchorChanges.size(), 2);
+
+    history.expireAt(2300);
     QCOMPARE(history.count(), 0);
     QVERIFY(!history.renderAnchor().isValid());
-    history.appendAt(kOrigin, 1400);
+    QCOMPARE(anchorChanges.size(), 3);
+
+    history.appendAt(kOrigin, 2400);
     QCOMPARE(history.renderAnchor(), kOrigin);
+    QCOMPARE(anchorChanges.size(), 4);
     history.clear();
     QVERIFY(!history.renderAnchor().isValid());
+    QCOMPARE(anchorChanges.size(), 5);
+    history.rebaseToLatest();
+    QCOMPARE(anchorChanges.size(), 5);
 }
 
 void MapTrailHistoryTest::_sceneGraphStyles()
