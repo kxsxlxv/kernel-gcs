@@ -26,6 +26,7 @@
 #include "LinkManager.h"
 #include "LogManager.h"
 #include "FlightMap/MapTrailHistory.h"
+#include "FlightMap/MapTrailSceneGraph.h"
 #include "MAVLinkProtocol.h"
 #include "MavlinkSettings.h"
 #include "MultiVehicleManager.h"
@@ -234,6 +235,7 @@ void QGCApplication::init()
     // discard QML_ELEMENT's generated registrar. Explicitly register this
     // visual history type before QML or unit tests use the module.
     qmlRegisterType<MapTrailHistory>("QGroundControl.FlightMap", 1, 0, "MapTrailHistory");
+    qmlRegisterType<MapTrailSceneGraph>("QGroundControl.FlightMap", 1, 0, "MapTrailSceneGraph");
     SettingsManager::instance()->init();
     if (_systemId > 0) {
         qCDebug(QGCApplicationLog) << "Setting MAVLink System ID to:" << _systemId;

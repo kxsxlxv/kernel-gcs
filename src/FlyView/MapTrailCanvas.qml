@@ -15,7 +15,7 @@ MapQuickItem {
     property bool simulated: false
 
     coordinate: trailHistory.renderAnchor
-    anchorPoint: Qt.point(trailOverlay.width / 2, trailOverlay.height / 2)
+    anchorPoint: Qt.point(trailMesh.width / 2, trailMesh.height / 2)
     autoFadeIn: false
 
     readonly property var settings: simulated
@@ -61,25 +61,75 @@ MapQuickItem {
         }
     }
 
+    function scheduleReproject() {
+        // Coalesce zoom/bearing changes to ~30 updates/s. A pure map pan
+        // already moves the native MapQuickItem, so it never rebuilds vertices.
+        if (!reprojectTimer.running) {
+            reprojectTimer.start()
+        }
+    }
+
+    function reproject() {
+        const points = trailHistory.coordinates()
+        if (!mapView || points.length < 2 || !root.coordinate.isValid) {
+            trailMesh.setProjectedPath([])
+            return
+        }
+        const anchor = mapView.fromCoordinate(root.coordinate, false)
+        if (!isFinite(anchor.x) || !isFinite(anchor.y)) {
+            trailMesh.setProjectedPath([])
+            return
+        }
+        const halfWidth = trailMesh.width / 2
+        const halfHeight = trailMesh.height / 2
+        const projected = []
+        for (let i = 0; i < points.length; ++i) {
+            const p = mapView.fromCoordinate(points[i], false)
+            if (!isFinite(p.x) || !isFinite(p.y)
+                    || (i > 0 && Math.abs(p.x - mapView.fromCoordinate(points[i - 1], false).x)
+                         > mapView.width * 0.8)) {
+                projected.push(Qt.point(NaN, NaN))
+            } else {
+                projected.push(Qt.point(p.x - anchor.x + halfWidth, p.y - anchor.y + halfHeight))
+            }
+        }
+        trailMesh.setProjectedPath(projected)
+        if (trailStyle === "fading") {
+            trailMesh.setFadeFactors(trailHistory.fadeFactors())
+        }
+    }
+
     onTrackedObjectChanged: {
         trailHistory.clear()
         record()
+        scheduleReproject()
     }
     onClearWhenStoppedChanged: checkStopPolicy()
-    Component.onCompleted: record()
+    onMapViewChanged: scheduleReproject()
+    Component.onCompleted: {
+        record()
+        scheduleReproject()
+    }
 
     MapTrailHistory {
         id: trailHistory
         enabled: root.trailEnabled && root.trailStyle !== "none"
         lifetimeMs: root.trailLifetimeMs
 
-        onPointAppended: trailCanvas.requestPaint()
-        onPathRebuilt: trailCanvas.requestPaint()
+        onPointAppended: root.scheduleReproject()
+        onPathRebuilt: root.scheduleReproject()
         onFadingChanged: {
             if (root.trailStyle === "fading") {
-                trailCanvas.requestPaint()
+                trailMesh.setFadeFactors(trailHistory.fadeFactors())
             }
         }
+    }
+
+    Timer {
+        id: reprojectTimer
+        interval: 33
+        repeat: false
+        onTriggered: root.reproject()
     }
 
     Connections {
@@ -98,114 +148,20 @@ MapQuickItem {
     Connections {
         target: root.mapView
         ignoreUnknownSignals: true
-        function onCenterChanged() { trailCanvas.requestPaint() }
-        function onZoomLevelChanged() { trailCanvas.requestPaint() }
-        function onBearingChanged() { trailCanvas.requestPaint() }
-        function onTiltChanged() { trailCanvas.requestPaint() }
+        function onZoomLevelChanged() { root.scheduleReproject() }
+        function onBearingChanged() { root.scheduleReproject() }
+        function onTiltChanged() { root.scheduleReproject() }
+        function onWidthChanged() { root.scheduleReproject() }
+        function onHeightChanged() { root.scheduleReproject() }
     }
 
-    onTrailStyleChanged: trailCanvas.requestPaint()
-    onTrailColorChanged: trailCanvas.requestPaint()
-    onTrailWidthChanged: trailCanvas.requestPaint()
-    onTrailOpacityChanged: trailCanvas.requestPaint()
-    onVisibleChanged: trailCanvas.requestPaint()
-
-    sourceItem: Item {
-        id: trailOverlay
-
-        // An object anchored near a viewport edge still needs to render trail
-        // segments on the opposite side. The fixed bound is two viewports.
-        width: root.mapView ? Math.max(1, root.mapView.width * 2) : 1
-        height: root.mapView ? Math.max(1, root.mapView.height * 2) : 1
-
-        Canvas {
-            id: trailCanvas
-            anchors.fill: parent
-            renderTarget: Canvas.Image
-            renderStrategy: Canvas.Immediate
-            onWidthChanged: requestPaint()
-            onHeightChanged: requestPaint()
-    
-            onPaint: {
-                const ctx = getContext("2d")
-                ctx.clearRect(0, 0, width, height)
-                if (!root.visible || !root.mapView || !root.trailEnabled
-                        || root.trailStyle === "none" || root.trailOpacity <= 0) {
-                    return
-                }
-                const points = trailHistory.coordinates()
-                if (points.length < 2) {
-                    return
-                }
-                const anchor = root.mapView.fromCoordinate(root.coordinate, false)
-                if (!isFinite(anchor.x) || !isFinite(anchor.y)) {
-                    return
-                }
-                // MapQuickItem geo-anchors this image to the last retained trail sample.
-                // Projection is relative to that point, not to the changing map viewport.
-                const originX = width * 0.5 - anchor.x
-                const originY = height * 0.5 - anchor.y
-                const projected = []
-                for (let i = 0; i < points.length; ++i) {
-                    const point = root.mapView.fromCoordinate(points[i], false)
-                    projected.push(Qt.point(point.x + originX, point.y + originY))
-                }
-                ctx.lineWidth = root.trailWidth
-                ctx.lineCap = "round"
-                ctx.lineJoin = "round"
-                const c = root.trailColor
-                const rgb = Math.round(c.r * 255) + "," + Math.round(c.g * 255) + ","
-                          + Math.round(c.b * 255)
-                const stroke = (alpha) => "rgba(" + rgb + "," + Math.max(0, Math.min(1, alpha)) + ")"
-                if (root.trailStyle === "dashed") {
-                    ctx.setLineDash([9, 6])
-                } else if (root.trailStyle === "dotted") {
-                    ctx.setLineDash([1, 5])
-                } else {
-                    ctx.setLineDash([])
-                }
-    
-                if (root.trailStyle === "fading") {
-                    const factors = trailHistory.fadeFactors()
-                    for (let i = 1; i < projected.length; ++i) {
-                        const a = projected[i - 1]
-                        const b = projected[i]
-                        if (!isFinite(a.x) || !isFinite(a.y) || !isFinite(b.x) || !isFinite(b.y)
-                                || Math.abs(a.x - b.x) > root.mapView.width * 0.8) {
-                            continue
-                        }
-                        if (a.x === b.x && a.y === b.y) {
-                            continue
-                        }
-                        const gradient = ctx.createLinearGradient(a.x, a.y, b.x, b.y)
-                        gradient.addColorStop(0, stroke(factors[i - 1] * root.trailOpacity))
-                        gradient.addColorStop(1, stroke(factors[i] * root.trailOpacity))
-                        ctx.strokeStyle = gradient
-                        ctx.beginPath()
-                        ctx.moveTo(a.x, a.y)
-                        ctx.lineTo(b.x, b.y)
-                        ctx.stroke()
-                    }
-                } else {
-                    ctx.strokeStyle = stroke(root.trailOpacity)
-                    ctx.beginPath()
-                    let started = false
-                    for (let i = 0; i < projected.length; ++i) {
-                        const p = projected[i]
-                        if (!isFinite(p.x) || !isFinite(p.y)) {
-                            started = false
-                            continue
-                        }
-                        if (!started || (i > 0 && Math.abs(p.x - projected[i - 1].x) > root.mapView.width * 0.8)) {
-                            ctx.moveTo(p.x, p.y)
-                        } else {
-                            ctx.lineTo(p.x, p.y)
-                        }
-                        started = true
-                    }
-                    ctx.stroke()
-                }
-            }
-        }
+    sourceItem: MapTrailSceneGraph {
+        id: trailMesh
+        width: root.mapView ? Math.max(1, root.mapView.width) : 1
+        height: root.mapView ? Math.max(1, root.mapView.height) : 1
+        strokeColor: root.trailColor
+        lineWidth: root.trailWidth
+        lineOpacity: root.trailOpacity
+        lineStyle: root.trailStyle
     }
 }
