@@ -108,6 +108,7 @@ MapQuickItem {
     }
     onClearWhenStoppedChanged: checkStopPolicy()
     onMapViewChanged: scheduleReproject()
+    onTrailStyleChanged: scheduleReproject()
     Component.onCompleted: {
         record()
         scheduleReproject()
