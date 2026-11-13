@@ -45,7 +45,7 @@ GeoMapItem {
         // or the simulator-reported range.
         const horizontalMeters = missile.distanceTo(target)
         const verticalMeters = targetHeight - missileHeight
-        const segmentMeters = Math.hypot(horizontalMeters, verticalMeters)
+        const segmentMeters = Math.sqrt(horizontalMeters * horizontalMeters + verticalMeters * verticalMeters)
         const metersPerPixel = root._camera ? root._camera.distance * root._screenFactor : 0
         const insetMeters = Math.max(0, root.markerRadiusPx * metersPerPixel)
         if (!isFinite(segmentMeters) || segmentMeters <= insetMeters || segmentMeters < 0.001) {
