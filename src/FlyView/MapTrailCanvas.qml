@@ -75,10 +75,22 @@ MapQuickItem {
             trailMesh.setProjectedPath([])
             return
         }
-        const anchor = mapView.fromCoordinate(root.coordinate, false)
+        let anchor = mapView.fromCoordinate(root.coordinate, false)
         if (!isFinite(anchor.x) || !isFinite(anchor.y)) {
             trailMesh.setProjectedPath([])
             return
+        }
+
+        // Unlike the previous last-sample anchor, this anchor stays fixed as
+        // new telemetry arrives. Rebase only when the trajectory has travelled
+        // far enough to approach the GPU item's bounds. Anchor and geometry
+        // update together in this synchronous function.
+        const newest = mapView.fromCoordinate(points[points.length - 1], false)
+        if (isFinite(newest.x) && isFinite(newest.y)
+                && (Math.abs(newest.x - anchor.x) > mapView.width * 0.75
+                    || Math.abs(newest.y - anchor.y) > mapView.height * 0.75)) {
+            trailHistory.rebaseToLatest()
+            anchor = mapView.fromCoordinate(root.coordinate, false)
         }
         const halfWidth = trailMesh.width / 2
         const halfHeight = trailMesh.height / 2
@@ -160,8 +172,10 @@ MapQuickItem {
 
     sourceItem: MapTrailSceneGraph {
         id: trailMesh
-        width: root.mapView ? Math.max(1, root.mapView.width) : 1
-        height: root.mapView ? Math.max(1, root.mapView.height) : 1
+        // This is scene-graph geometry, not an image buffer: a larger logical
+        // item has negligible memory cost and avoids clipping during rebasing.
+        width: root.mapView ? Math.max(1, root.mapView.width * 4) : 1
+        height: root.mapView ? Math.max(1, root.mapView.height * 4) : 1
         strokeColor: root.trailColor
         lineWidth: root.trailWidth
         lineOpacity: root.trailOpacity

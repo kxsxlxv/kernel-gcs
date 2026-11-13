@@ -15,7 +15,7 @@ class MapTrailHistory : public QObject
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
     Q_PROPERTY(int lifetimeMs READ lifetimeMs WRITE setLifetimeMs NOTIFY lifetimeMsChanged)
     Q_PROPERTY(int count READ count NOTIFY changed)
-    Q_PROPERTY(QGeoCoordinate renderAnchor READ renderAnchor NOTIFY changed)
+    Q_PROPERTY(QGeoCoordinate renderAnchor READ renderAnchor NOTIFY renderAnchorChanged)
 
 public:
     explicit MapTrailHistory(QObject* parent = nullptr);
@@ -30,10 +30,13 @@ public:
     void setLifetimeMs(int ms);
 
     int count() const { return static_cast<int>(_samples.size()); }
-    QGeoCoordinate renderAnchor() const { return _samples.isEmpty() ? QGeoCoordinate() : _samples.last().coordinate; }
+    QGeoCoordinate renderAnchor() const { return _renderAnchor; }
 
     Q_INVOKABLE void append(const QGeoCoordinate& coordinate);
     Q_INVOKABLE void clear();
+    /// Re-anchor only when the projected trail approaches the viewport boundary.
+    /// Ordinary telemetry updates must not move the native MapQuickItem.
+    Q_INVOKABLE void rebaseToLatest();
     Q_INVOKABLE QVariantList coordinates() const;
     Q_INVOKABLE QVariantList fadeFactors() const;
 
@@ -48,6 +51,7 @@ signals:
     void pointAppended(QGeoCoordinate coordinate);
     void pathRebuilt();
     void fadingChanged();
+    void renderAnchorChanged();
 
 private:
     struct Sample {
@@ -56,6 +60,7 @@ private:
     };
 
     QList<Sample> _samples;
+    QGeoCoordinate _renderAnchor;
     QElapsedTimer _clock;
     QTimer _timer;
     bool _enabled = true;
