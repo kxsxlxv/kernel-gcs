@@ -36,6 +36,8 @@ void SimulationObject::_apply(const SimulationObjectProtocol::Packet& packet, qi
     _completionReason.clear();
     _targetId = packet.targetId;
     _targetValid = packet.targetValid;
+    _rangeValid = packet.rangeValid;
+    _slantRangeM = packet.slantRangeM;
     // Prefer NED horizontal velocity. At low speed keep the last reliable heading.
     // Only infer from positions when the producer omitted velocity entirely.
     static constexpr double kMinHeadingSpeedMps = 0.5;

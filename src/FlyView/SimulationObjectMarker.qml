@@ -14,6 +14,16 @@ Item {
     property bool showLabel: true
     property real heading: 0        // Clockwise degrees from north; icon nose is up at 0
     property bool headingValid: false
+    property bool rangeValid: false
+    property real slantRangeM: NaN
+
+    readonly property string reportedRangeText: {
+        if (!rangeValid || !isFinite(slantRangeM) || slantRangeM < 0) {
+            return ""
+        }
+        // Use spaces as grouping separators, independent of the user's locale.
+        return Math.round(slantRangeM).toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, " ") + qsTr(" m")
+    }
 
     readonly property color _markerColor: lifecycle === "active" ? qgcPal.colorOrange : qgcPal.colorGrey
 
@@ -64,24 +74,19 @@ Item {
         }
     }
 
-    Rectangle {
+    // Keep the ID/status legible but unobtrusive; the dark pill is for range only.
+    Column {
         anchors.left: parent.right
         anchors.leftMargin: ScreenTools.defaultFontPixelWidth / 2
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.min(ScreenTools.defaultFontPixelWidth * 22, statusLabel.implicitWidth + ScreenTools.defaultFontPixelWidth)
-        height: statusLabel.implicitHeight + ScreenTools.defaultFontPixelWidth / 2
-        radius: ScreenTools.defaultFontPixelWidth / 3
-        color: qgcPal.window
-        border.color: root._markerColor
-        border.width: 1
+        spacing: ScreenTools.defaultFontPixelWidth / 4
         visible: root.showLabel && root.objectId !== ""
 
         QGCLabel {
             id: statusLabel
-            anchors.fill: parent
-            anchors.leftMargin: ScreenTools.defaultFontPixelWidth / 2
-            anchors.rightMargin: ScreenTools.defaultFontPixelWidth / 2
+            width: Math.min(implicitWidth, ScreenTools.defaultFontPixelWidth * 22)
             color: qgcPal.text
+            opacity: 0.72
             font.pointSize: ScreenTools.smallFontPointSize
             elide: Text.ElideRight
             text: (root.objectId + (root.headingValid ? "" : qsTr(" · ?"))) + (root.lifecycle === "active" ? ""
@@ -89,5 +94,24 @@ Item {
                                                 : root.lifecycle === "disconnected" ? qsTr("disconnected")
                                                 : qsTr("stale")) + ")")
         }
+
+        Rectangle {
+            id: rangeBadge
+            visible: root.reportedRangeText !== ""
+            width: rangeLabel.implicitWidth + ScreenTools.defaultFontPixelWidth
+            height: rangeLabel.implicitHeight + ScreenTools.defaultFontPixelWidth / 2
+            radius: ScreenTools.defaultFontPixelWidth / 3
+            color: Qt.rgba(0, 0, 0, 0.84)
+
+            QGCLabel {
+                id: rangeLabel
+                anchors.centerIn: parent
+                color: "white"
+                font.pointSize: ScreenTools.smallFontPointSize
+                font.bold: true
+                text: root.reportedRangeText
+            }
+        }
     }
+
 }

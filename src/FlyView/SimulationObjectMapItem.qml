@@ -27,6 +27,8 @@ MapQuickItem {
         size: root.markerSize
         objectId: root.simulationObject ? root.simulationObject.objectId : ""
         lifecycle: root.simulationObject ? root.simulationObject.lifecycle : ""
+        rangeValid: root.simulationObject ? root.simulationObject.rangeValid : false
+        slantRangeM: root.simulationObject ? root.simulationObject.slantRangeM : NaN
         showLabel: root.showLabel
         heading: root.simulationObject ? root.simulationObject.heading : 0
         headingValid: root.simulationObject ? root.simulationObject.headingValid : false
