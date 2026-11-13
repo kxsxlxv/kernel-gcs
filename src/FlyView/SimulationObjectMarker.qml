@@ -22,7 +22,7 @@ Item {
             return ""
         }
         // Use spaces as grouping separators, independent of the user's locale.
-        return Math.round(slantRangeM).toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, " ") + qsTr(" m")
+        return Math.round(slantRangeM).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + qsTr(" m")
     }
 
     readonly property color _markerColor: lifecycle === "active" ? qgcPal.colorOrange : qgcPal.colorGrey

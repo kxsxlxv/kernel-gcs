@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits>
+
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QHash>
 #include <QtCore/QObject>
@@ -8,8 +10,6 @@
 #include <QtCore/QTimer>
 #include <QtNetwork/QHostAddress>
 #include <QtPositioning/QGeoCoordinate>
-
-#include <limits>
 
 #include "SimulationObjectProtocol.h"
 

@@ -1,10 +1,10 @@
 #pragma once
 
+#include <limits>
+
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
 #include <QtCore/QtGlobal>
-
-#include <limits>
 #include <QtPositioning/QGeoCoordinate>
 
 namespace SimulationObjectProtocol {
