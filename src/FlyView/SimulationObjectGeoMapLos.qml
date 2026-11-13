@@ -91,8 +91,10 @@ GeoMapItem {
                     cullMode: Material.NoCulling
                     sourceBlend: CustomMaterial.SrcAlpha
                     destinationBlend: CustomMaterial.OneMinusSrcAlpha
-                    vertexShader: "shaders/flightpath.vert"
-                    fragmentShader: "shaders/flightpath.frag"
+                    // These shader resources belong to the GeoMap QML module,
+                    // not this component's FlyView resource directory.
+                    vertexShader: "qrc:/qml/QGroundControl/GeoMap/shaders/flightpath.vert"
+                    fragmentShader: "qrc:/qml/QGroundControl/GeoMap/shaders/flightpath.frag"
 
                     property real lineWidth: 2
                     property real screenFactor: root._screenFactor
