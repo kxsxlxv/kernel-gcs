@@ -53,7 +53,7 @@ GeoMapItem {
     crossfade3D: false
     coordinate: _geometry && _geometry.anchorCoordinate.isValid
                 ? _geometry.anchorCoordinate : QtPositioning.coordinate()
-    visible: endpoints.drawable && losCoordinates.length === 2 && _geometry
+    visible: endpoints.drawable && losCoordinates.length === 2 && !!_geometry
              && _geometry.pointCount === 2
     node3DOpacity: 1
 

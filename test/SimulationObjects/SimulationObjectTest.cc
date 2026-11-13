@@ -271,6 +271,15 @@ void SimulationObjectTest::_mavlinkTargetBinding()
     QVERIFY(manager.acceptDatagram(packet(targetInvalid), peer));
     QVERIFY(!object->matchesMavlinkIdentity(11, 1));
 
+    // Restore both endpoints, then complete the object: no LOS survives completion.
+    QJsonObject restored = bound;
+    restored.insert(QStringLiteral("seq"), 5);
+    QVERIFY(manager.acceptDatagram(packet(restored), peer));
+    QVERIFY(object->matchesMavlinkIdentity(11, 1));
+    QVERIFY(manager.acceptDatagram(packet(ended(kSession1, 6)), peer));
+    QCOMPARE(object->lifecycle(), QStringLiteral("completed"));
+    QVERIFY(!object->matchesMavlinkIdentity(11, 1));
+
     // Existing protocol validation still rejects wrong binding types.
     QJsonObject invalid = bound;
     QJsonObject wrongTarget = invalid.value(QStringLiteral("target")).toObject();
