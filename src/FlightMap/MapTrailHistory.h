@@ -15,6 +15,7 @@ class MapTrailHistory : public QObject
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
     Q_PROPERTY(int lifetimeMs READ lifetimeMs WRITE setLifetimeMs NOTIFY lifetimeMsChanged)
     Q_PROPERTY(int count READ count NOTIFY changed)
+    Q_PROPERTY(QGeoCoordinate renderAnchor READ renderAnchor NOTIFY changed)
 
 public:
     explicit MapTrailHistory(QObject* parent = nullptr);
@@ -29,6 +30,7 @@ public:
     void setLifetimeMs(int ms);
 
     int count() const { return static_cast<int>(_samples.size()); }
+    QGeoCoordinate renderAnchor() const { return _samples.isEmpty() ? QGeoCoordinate() : _samples.last().coordinate; }
 
     Q_INVOKABLE void append(const QGeoCoordinate& coordinate);
     Q_INVOKABLE void clear();

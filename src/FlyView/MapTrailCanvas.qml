@@ -1,16 +1,22 @@
 import QtQuick
+import QtLocation
 import QtPositioning
 
 import QGroundControl
 import QGroundControl.FlightMap
 
-/// One painter and one monotonic history per object; never an item per trail point.
-Item {
+/// Geographic anchor follows native map transforms; the Canvas paints only
+/// offsets relative to the anchor so pan cannot leave a stale image on screen.
+MapQuickItem {
     id: root
 
     property var mapView
     property var trackedObject
     property bool simulated: false
+
+    coordinate: trailHistory.renderAnchor
+    anchorPoint: Qt.point(trailOverlay.width / 2, trailOverlay.height / 2)
+    autoFadeIn: false
 
     readonly property var settings: simulated
         ? QGroundControl.settingsManager.simulationObjectSettings
@@ -104,11 +110,19 @@ Item {
     onTrailOpacityChanged: trailCanvas.requestPaint()
     onVisibleChanged: trailCanvas.requestPaint()
 
-    Canvas {
-        id: trailCanvas
-        anchors.fill: parent
-        renderTarget: Canvas.Image
-        renderStrategy: Canvas.Cooperative
+    sourceItem: Item {
+        id: trailOverlay
+
+        // An object anchored near a viewport edge still needs to render trail
+        // segments on the opposite side. The fixed bound is two viewports.
+        width: root.mapView ? Math.max(1, root.mapView.width * 2) : 1
+        height: root.mapView ? Math.max(1, root.mapView.height * 2) : 1
+
+        Canvas {
+            id: trailCanvas
+            anchors.fill: parent
+            renderTarget: Canvas.Image
+            renderStrategy: Canvas.Immediate
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
 
@@ -123,9 +137,18 @@ Item {
             if (points.length < 2) {
                 return
             }
+            const anchor = root.mapView.fromCoordinate(root.coordinate, false)
+            if (!isFinite(anchor.x) || !isFinite(anchor.y)) {
+                return
+            }
+            // MapQuickItem geo-anchors this image to the last retained trail sample.
+            // Projection is relative to that point, not to the changing map viewport.
+            const originX = width * 0.5 - anchor.x
+            const originY = height * 0.5 - anchor.y
             const projected = []
             for (let i = 0; i < points.length; ++i) {
-                projected.push(root.mapView.fromCoordinate(points[i], false))
+                const point = root.mapView.fromCoordinate(points[i], false)
+                projected.push(Qt.point(point.x + originX, point.y + originY))
             }
             ctx.lineWidth = root.trailWidth
             ctx.lineCap = "round"
@@ -148,7 +171,7 @@ Item {
                     const a = projected[i - 1]
                     const b = projected[i]
                     if (!isFinite(a.x) || !isFinite(a.y) || !isFinite(b.x) || !isFinite(b.y)
-                            || Math.abs(a.x - b.x) > width * 0.8) {
+                            || Math.abs(a.x - b.x) > root.mapView.width * 0.8) {
                         continue
                     }
                     if (a.x === b.x && a.y === b.y) {
@@ -173,7 +196,7 @@ Item {
                         started = false
                         continue
                     }
-                    if (!started || (i > 0 && Math.abs(p.x - projected[i - 1].x) > width * 0.8)) {
+                    if (!started || (i > 0 && Math.abs(p.x - projected[i - 1].x) > root.mapView.width * 0.8)) {
                         ctx.moveTo(p.x, p.y)
                     } else {
                         ctx.lineTo(p.x, p.y)
@@ -182,6 +205,8 @@ Item {
                 }
                 ctx.stroke()
             }
+        }
+    }
         }
     }
 }

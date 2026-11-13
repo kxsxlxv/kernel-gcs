@@ -10,6 +10,32 @@ namespace {
 const QGeoCoordinate kOrigin(43.41, 39.94, 100.0);
 }
 
+void MapTrailHistoryTest::_renderAnchor()
+{
+    MapTrailHistory history;
+    QVERIFY(!history.renderAnchor().isValid());
+
+    const QGeoCoordinate next = kOrigin.atDistanceAndAzimuth(25, 90);
+    history.setLifetimeMs(1000);
+    history.appendAt(kOrigin, 0);
+    QCOMPARE(history.renderAnchor(), kOrigin);
+    history.appendAt(next, 200);
+    QCOMPARE(history.renderAnchor(), next);
+
+    // Removing the first sample cannot move the native map anchor.
+    history.expireAt(1100);
+    QCOMPARE(history.count(), 1);
+    QCOMPARE(history.renderAnchor(), next);
+
+    history.expireAt(1300);
+    QCOMPARE(history.count(), 0);
+    QVERIFY(!history.renderAnchor().isValid());
+    history.appendAt(kOrigin, 1400);
+    QCOMPARE(history.renderAnchor(), kOrigin);
+    history.clear();
+    QVERIFY(!history.renderAnchor().isValid());
+}
+
 void MapTrailHistoryTest::_rollingWindow()
 {
     MapTrailHistory history;
