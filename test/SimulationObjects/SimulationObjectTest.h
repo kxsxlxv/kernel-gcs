@@ -11,6 +11,7 @@ private slots:
     void _identityAndLifecycle();
     void _mapProjectionMetadata();
     void _reportedRange();
+    void _mavlinkTargetBinding();
     void _headingFromVelocity();
     void _headingFromCoordinates();
     void _staleAndDisconnect();

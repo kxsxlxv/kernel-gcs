@@ -212,6 +212,14 @@ FlightMap {
         }
     }
 
+    // Read-only LOS visualization; no line without a valid explicit MAVLink binding.
+    MapItemView {
+        model: QGroundControl.simulationObjects
+        delegate: SimulationObjectMapLos {
+            simulationObject: object
+        }
+    }
+
     // Add distance sensor view
     MapItemView{
         model: QGroundControl.multiVehicleManager.vehicles

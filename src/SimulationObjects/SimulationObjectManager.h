@@ -29,6 +29,10 @@ class SimulationObject : public QObject
     Q_PROPERTY(QString lifecycle READ lifecycle NOTIFY changed)
     Q_PROPERTY(QString targetId READ targetId NOTIFY changed)
     Q_PROPERTY(bool targetValid READ targetValid NOTIFY changed)
+    Q_PROPERTY(bool targetBindingValid READ targetBindingValid NOTIFY changed)
+    Q_PROPERTY(QString targetSourceKey READ targetSourceKey NOTIFY changed)
+    Q_PROPERTY(quint32 targetSysId READ targetSysId NOTIFY changed)
+    Q_PROPERTY(quint32 targetCompId READ targetCompId NOTIFY changed)
     Q_PROPERTY(double slantRangeM READ slantRangeM NOTIFY changed)
     Q_PROPERTY(bool rangeValid READ rangeValid NOTIFY changed)
     Q_PROPERTY(QGeoCoordinate coordinate READ coordinate NOTIFY changed)
@@ -50,6 +54,14 @@ public:
     QString lifecycle() const { return _lifecycle; }
     QString targetId() const { return _targetId; }
     bool targetValid() const { return _targetValid; }
+    bool targetBindingValid() const { return _targetBindingValid; }
+    QString targetSourceKey() const { return _targetSourceKey; }
+    quint32 targetSysId() const { return _targetSysId; }
+    quint32 targetCompId() const { return _targetCompId; }
+
+    /// Rendering-only association check. Does not select or command a Vehicle.
+    bool matchesMavlinkIdentity(quint32 sysId, int compId) const;
+    Q_INVOKABLE bool matchesTargetVehicle(QObject* candidate) const;
     double slantRangeM() const { return _slantRangeM; }
     bool rangeValid() const { return _rangeValid; }
     QGeoCoordinate coordinate() const { return _coordinate; }
@@ -78,6 +90,10 @@ private:
     QString _lifecycle = QStringLiteral("active");
     QString _targetId;
     bool _targetValid = false;
+    bool _targetBindingValid = false;
+    QString _targetSourceKey;
+    quint32 _targetSysId = 0;
+    quint32 _targetCompId = 0;
     double _slantRangeM = std::numeric_limits<double>::quiet_NaN();
     bool _rangeValid = false;
     QGeoCoordinate _coordinate;

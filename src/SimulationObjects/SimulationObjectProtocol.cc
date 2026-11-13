@@ -208,6 +208,14 @@ bool target(const QJsonValue& value, SimulationObjectProtocol::Packet& packet)
         return false;
     }
     packet.targetValid = valid.isBool() && valid.toBool();
+    const QJsonValue mavlink = object.value(QStringLiteral("mavlink"));
+    if (mavlink.isObject()) {
+        const QJsonObject association = mavlink.toObject();
+        packet.targetBindingValid = true;
+        packet.targetSourceKey = association.value(QStringLiteral("source_key")).toString();
+        packet.targetSysId = static_cast<quint32>(association.value(QStringLiteral("sysid")).toInt());
+        packet.targetCompId = static_cast<quint32>(association.value(QStringLiteral("compid")).toInt());
+    }
     return true;
 }
 

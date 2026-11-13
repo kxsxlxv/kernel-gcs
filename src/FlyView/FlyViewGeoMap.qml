@@ -159,6 +159,17 @@ GeoMapView {
         }
     }
 
+    Repeater {
+        model: QGroundControl.simulationObjects
+
+        SimulationObjectGeoMapLos {
+            scene: root.scene
+            surfaceModel: root.surfaceModel
+            simulationObject: object
+            missileHomeTerrainBias: root._activeVehicleHomeTerrainBias
+        }
+    }
+
     // One independently timed trail for each MAVLink Vehicle.
     Repeater {
         model: QGroundControl.multiVehicleManager.vehicles
