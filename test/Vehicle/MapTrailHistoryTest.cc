@@ -1,10 +1,12 @@
 #include "MapTrailHistoryTest.h"
 
+#include <QtCore/qnumeric.h>
 #include <QtPositioning/QGeoCoordinate>
 #include <QtTest/QSignalSpy>
 #include <QtQml/qqml.h>
 
 #include "../../src/FlightMap/MapTrailHistory.h"
+#include "../../src/FlightMap/MapTrailSceneGraph.h"
 
 namespace {
 const QGeoCoordinate kOrigin(43.41, 39.94, 100.0);
@@ -34,6 +36,53 @@ void MapTrailHistoryTest::_renderAnchor()
     QCOMPARE(history.renderAnchor(), kOrigin);
     history.clear();
     QVERIFY(!history.renderAnchor().isValid());
+}
+
+void MapTrailHistoryTest::_sceneGraphStyles()
+{
+    const QVector<QPointF> points{QPointF(0, 0), QPointF(100, 0), QPointF(200, 30)};
+    const QVector<qreal> fades{0.1, 0.5, 1.0};
+    const auto solid = MapTrailSceneGraph::buildPrimitives(points, fades, 3.0, QStringLiteral("solid"));
+    QCOMPARE(solid.size(), 2);
+    QVERIFY(!solid[0].dot);
+    const auto fading = MapTrailSceneGraph::buildPrimitives(points, fades, 3.0, QStringLiteral("fading"));
+    QCOMPARE(fading.size(), 2);
+    QCOMPARE(fading.first().alphaStart, 0.1);
+    QCOMPARE(fading.first().alphaEnd, 0.5);
+
+    const auto dashes = MapTrailSceneGraph::buildPrimitives(points, fades, 3.0, QStringLiteral("dashed"));
+    QVERIFY(dashes.size() > solid.size());
+    QVERIFY(dashes.size() < MapTrailSceneGraph::kMaxPrimitives);
+    QVERIFY(!dashes.first().dot);
+
+    const auto dots = MapTrailSceneGraph::buildPrimitives(points, fades, 3.0, QStringLiteral("dotted"));
+    QVERIFY(dots.size() > solid.size());
+    QVERIFY(dots.first().dot);
+
+    QVERIFY(MapTrailSceneGraph::buildPrimitives(points, fades, 3.0, QStringLiteral("none")).isEmpty());
+    QVERIFY(MapTrailSceneGraph::buildPrimitives({points.first()}, fades, 3.0, QStringLiteral("solid")).isEmpty());
+}
+
+void MapTrailHistoryTest::_sceneGraphFading()
+{
+    const QVector<QPointF> points{QPointF(0, 0), QPointF(100, 0), QPointF(200, 0)};
+    const auto factors = QVector<qreal>{0.0, 0.4, 1.0};
+    const auto fading = MapTrailSceneGraph::buildPrimitives(points, factors, 3.0, QStringLiteral("fading"));
+    QCOMPARE(fading.size(), 2);
+    QCOMPARE(fading[0].alphaStart, 0.0);
+    QCOMPARE(fading[0].alphaEnd, 0.4);
+    QCOMPARE(fading[1].alphaStart, 0.4);
+    QCOMPARE(fading[1].alphaEnd, 1.0);
+
+    // Invalid projected positions break the path, never connect across a
+    // coordinate projection failure or around a longitude wrap.
+    const QVector<QPointF> broken{QPointF(0, 0), QPointF(100, 0),
+                                  QPointF(qQNaN(), qQNaN()), QPointF(200, 0)};
+    QCOMPARE(MapTrailSceneGraph::buildPrimitives(broken, factors, 3.0, QStringLiteral("solid")).size(), 1);
+
+    const QVector<QPointF> far{QPointF(0, 0), QPointF(1e7, 0)};
+    const auto many = MapTrailSceneGraph::buildPrimitives(far, {}, 3.0, QStringLiteral("dotted"));
+    QVERIFY(many.size() <= MapTrailSceneGraph::kMaxPrimitives);
 }
 
 void MapTrailHistoryTest::_rollingWindow()
@@ -144,6 +193,7 @@ void MapTrailHistoryTest::_qmlTypeRegistered()
     // Pure C++ history tests can pass even when its QML element was discarded
     // by static-library linking. Keep a direct regression guard for registration.
     QVERIFY(qmlTypeId("QGroundControl.FlightMap", 1, 0, "MapTrailHistory") >= 0);
+    QVERIFY(qmlTypeId("QGroundControl.FlightMap", 1, 0, "MapTrailSceneGraph") >= 0);
 }
 
 UT_REGISTER_TEST(MapTrailHistoryTest, TestLabel::Unit)
