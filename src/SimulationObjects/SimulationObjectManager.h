@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits>
+
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QHash>
 #include <QtCore/QObject>
@@ -27,6 +29,8 @@ class SimulationObject : public QObject
     Q_PROPERTY(QString lifecycle READ lifecycle NOTIFY changed)
     Q_PROPERTY(QString targetId READ targetId NOTIFY changed)
     Q_PROPERTY(bool targetValid READ targetValid NOTIFY changed)
+    Q_PROPERTY(double slantRangeM READ slantRangeM NOTIFY changed)
+    Q_PROPERTY(bool rangeValid READ rangeValid NOTIFY changed)
     Q_PROPERTY(QGeoCoordinate coordinate READ coordinate NOTIFY changed)
     Q_PROPERTY(bool positionValid READ positionValid NOTIFY changed)
     Q_PROPERTY(QString altitudeDatum READ altitudeDatum NOTIFY changed)
@@ -46,6 +50,8 @@ public:
     QString lifecycle() const { return _lifecycle; }
     QString targetId() const { return _targetId; }
     bool targetValid() const { return _targetValid; }
+    double slantRangeM() const { return _slantRangeM; }
+    bool rangeValid() const { return _rangeValid; }
     QGeoCoordinate coordinate() const { return _coordinate; }
     bool positionValid() const { return _positionValid; }
     QString altitudeDatum() const { return _altitudeDatum; }
@@ -72,6 +78,8 @@ private:
     QString _lifecycle = QStringLiteral("active");
     QString _targetId;
     bool _targetValid = false;
+    double _slantRangeM = std::numeric_limits<double>::quiet_NaN();
+    bool _rangeValid = false;
     QGeoCoordinate _coordinate;
     bool _positionValid = false;
     QString _altitudeDatum;

@@ -136,6 +136,80 @@ void SimulationObjectTest::_validatesProtocol()
     QVERIFY(!SimulationObjectProtocol::decode(QByteArray(1201, 'x'), decoded));
 }
 
+void SimulationObjectTest::_reportedRange()
+{
+    SimulationObjectProtocol::Packet decoded;
+    QJsonObject valid = state(kSession1, 1);
+    valid.insert(QStringLiteral("engagement"), QJsonObject{
+        {QStringLiteral("slant_range_m"), 1234.4},
+        {QStringLiteral("range_valid"), true},
+        {QStringLiteral("range_sim_time_ns"), QStringLiteral("250000000")},
+    });
+    QVERIFY(SimulationObjectProtocol::decode(packet(valid), decoded));
+    QVERIFY(decoded.rangeValid);
+    QCOMPARE(decoded.slantRangeM, 1234.4);
+
+    auto* settings = SettingsManager::instance()->simulationObjectSettings();
+    Fact* const enabled = settings->enabled();
+    const QVariant original = enabled->rawValue();
+    const auto restore = qScopeGuard([enabled, original]() { enabled->setRawValue(original); });
+    enabled->setRawValue(true);
+
+    SimulationObjectManager manager(settings);
+    const QHostAddress peer(QHostAddress::LocalHost);
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession1)), peer));
+    QVERIFY(manager.acceptDatagram(packet(valid), peer));
+
+    SimulationObject* const missile = manager.objectFor(kSession1, 1, QStringLiteral("missile-1"), 1);
+    QVERIFY(missile);
+    QVERIFY(missile->rangeValid());
+    QCOMPARE(missile->slantRangeM(), 1234.4);
+
+    QJsonObject invalid = state(kSession1, 2);
+    invalid.insert(QStringLiteral("engagement"), QJsonObject{
+        {QStringLiteral("slant_range_m"), 900.0},
+        {QStringLiteral("range_valid"), false},
+        {QStringLiteral("range_sim_time_ns"), QJsonValue::Null},
+    });
+    QVERIFY(manager.acceptDatagram(packet(invalid), peer));
+    QVERIFY(!missile->rangeValid());
+    QCOMPARE(missile->slantRangeM(), 900.0);  // Value is stored but never shown while invalid.
+
+    QJsonObject missing = state(kSession1, 3);
+    QVERIFY(manager.acceptDatagram(packet(missing), peer));
+    QVERIFY(!missile->rangeValid());
+    QVERIFY(std::isnan(missile->slantRangeM()));  // No stale range can leak into later states.
+
+    QJsonObject nullRange = state(kSession1, 4);
+    nullRange.insert(QStringLiteral("engagement"), QJsonObject{
+        {QStringLiteral("slant_range_m"), QJsonValue::Null},
+        {QStringLiteral("range_valid"), false},
+    });
+    QVERIFY(manager.acceptDatagram(packet(nullRange), peer));
+    QVERIFY(!missile->rangeValid());
+    QVERIFY(std::isnan(missile->slantRangeM()));
+
+    QJsonObject malformed = state(kSession1, 5);
+    malformed.insert(QStringLiteral("engagement"), QJsonObject{
+        {QStringLiteral("slant_range_m"), 10.0},
+        {QStringLiteral("range_valid"), true},
+        {QStringLiteral("range_sim_time_ns"), 500000000.0},
+    });
+    QVERIFY(!SimulationObjectProtocol::decode(packet(malformed), decoded));
+    QVERIFY(!manager.acceptDatagram(packet(malformed), peer));
+    QVERIFY(!missile->rangeValid());
+
+    QJsonObject zeroRange = state(kSession1, 5);
+    zeroRange.insert(QStringLiteral("engagement"), QJsonObject{
+        {QStringLiteral("slant_range_m"), 0.0},
+        {QStringLiteral("range_valid"), true},
+        {QStringLiteral("range_sim_time_ns"), QStringLiteral("500000000")},
+    });
+    QVERIFY(manager.acceptDatagram(packet(zeroRange), peer));
+    QVERIFY(missile->rangeValid()); // Zero is a valid measured value, not an absent value.
+    QCOMPARE(missile->slantRangeM(), 0.0);
+}
+
 void SimulationObjectTest::_identityAndLifecycle()
 {
     auto* settings = SettingsManager::instance()->simulationObjectSettings();

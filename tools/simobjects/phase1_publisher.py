@@ -145,6 +145,19 @@ def fixture_traffic(seed, index, rate, sequences, with_fixture_npcs, center_lat,
     return updates, []
 
 
+def add_demo_range(updates, meters):
+    """Opt-in label fixture; not a simulated target range or LOS calculation."""
+    if meters is None:
+        return
+    for update in updates:
+        if update.get("message") == "state" and update.get("object", {}).get("kind") == "missile":
+            update["engagement"] = {
+                "slant_range_m": meters,
+                "range_valid": True,
+                "range_sim_time_ns": update["sim_time_ns"],
+            }
+
+
 def crc_x25(data, extra):
     crc = 0xFFFF
     for byte in data + bytes([extra]):
@@ -193,6 +206,7 @@ def run(args):
                 time.sleep(max(0, start + t / args.speed - time.monotonic()))
             updates, npcs = fixture_traffic(args.seed, index, args.rate, sequences,
                                             args.with_fixture_npcs, args.center_lat, args.center_lon)
+            add_demo_range(updates, args.demo_range_m)
             for update in updates:
                 payload = json.dumps(update, separators=(",", ":"), allow_nan=False).encode()
                 if len(payload) > 1200:
@@ -220,6 +234,8 @@ def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--overlay-host", default="127.0.0.1")
     cli.add_argument("--overlay-port", type=int, default=14660)
+    cli.add_argument("--demo-range-m", type=float, default=None,
+                     help="Opt-in synthetic reported range badge in meters (display test only)")
     cli.add_argument("--mavlink-host", default="127.0.0.1")
     cli.add_argument("--with-fixture-npcs", action="store_true",
                      help="Also publish synthetic npc-11/npc-12 on MAVLink (off by default)")
@@ -242,6 +258,8 @@ def main():
         cli.error("center-lat must be finite and between -89 and 89 degrees")
     if not math.isfinite(args.center_lon) or not -180 <= args.center_lon <= 180:
         cli.error("center-lon must be finite and between -180 and 180 degrees")
+    if args.demo_range_m is not None and (not math.isfinite(args.demo_range_m) or args.demo_range_m < 0):
+        cli.error("--demo-range-m must be finite and nonnegative")
     if args.seed is None:
         args.seed = 42 if args.dry_run or args.self_test else uuid.uuid4().int
     if args.self_test:
@@ -263,6 +281,11 @@ def main():
         all_updates, fixture_npcs = fixture_traffic(42, 0, 30, {}, True, LAT, LON)
         assert len(fixture_npcs) == 2
         assert any(p.get("object", {}).get("kind") == "npc" for p in all_updates)
+        sample, _ = fixture_traffic(42, 0, 30, {}, False, LAT, LON)
+        add_demo_range(sample, 1234.4)
+        assert all(p["engagement"]["slant_range_m"] == 1234.4 and p["engagement"]["range_valid"]
+                   and p["engagement"]["range_sim_time_ns"] == p["sim_time_ns"]
+                   for p in sample if p.get("object", {}).get("kind") == "missile")
         args.dry_run = True
     if not args.dry_run:
         print(f"Streaming {'missiles + test NPCs' if args.with_fixture_npcs else 'missiles only'} "

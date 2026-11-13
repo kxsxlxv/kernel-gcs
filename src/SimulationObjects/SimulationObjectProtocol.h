@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits>
+
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
 #include <QtCore/QtGlobal>
@@ -26,6 +28,8 @@ struct Packet {
     QString targetId;
     quint64 targetGeneration = 0;
     bool targetValid = false;
+    bool rangeValid = false;
+    double slantRangeM = std::numeric_limits<double>::quiet_NaN();
     QGeoCoordinate position;
     bool positionValid = false;
     QString altitudeDatum;

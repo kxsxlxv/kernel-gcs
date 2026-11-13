@@ -211,7 +211,7 @@ bool target(const QJsonValue& value, SimulationObjectProtocol::Packet& packet)
     return true;
 }
 
-bool engagement(const QJsonValue& value)
+bool engagement(const QJsonValue& value, SimulationObjectProtocol::Packet& packet)
 {
     if (value.isUndefined() || value.isNull()) {
         return true;
@@ -236,8 +236,16 @@ bool engagement(const QJsonValue& value)
     }
     if (rangeValid.toBool()) {
         quint64 timestamp = 0;
-        return object.value(QStringLiteral("slant_range_m")).isDouble() &&
-               decimal(object.value(QStringLiteral("range_sim_time_ns")), timestamp);
+        if (!object.value(QStringLiteral("slant_range_m")).isDouble() ||
+            !decimal(object.value(QStringLiteral("range_sim_time_ns")), timestamp)) {
+            return false;
+        }
+    }
+    packet.rangeValid = rangeValid.toBool();
+    const QJsonValue rangeValue = object.value(QStringLiteral("slant_range_m"));
+    if (rangeValue.isDouble()) {
+        // The existing optionalReal validator above already checked finite/nonnegative.
+        packet.slantRangeM = rangeValue.toDouble();
     }
     return true;
 }
@@ -323,7 +331,7 @@ bool SimulationObjectProtocol::decode(const QByteArray& bytes, Packet& packet)
                 !velocity(root.value(QStringLiteral("velocity")), parsed) ||
                 (parsed.kind == QLatin1String("missile") &&
                  (!target(root.value(QStringLiteral("target")), parsed) ||
-                  !engagement(root.value(QStringLiteral("engagement"))))) ||
+                  !engagement(root.value(QStringLiteral("engagement")), parsed))) ||
                 (parsed.kind == QLatin1String("npc") &&
                  !binding(root.value(QStringLiteral("mavlink_binding"))))) {
                 return false;

@@ -10,6 +10,7 @@ private slots:
     void _validatesProtocol();
     void _identityAndLifecycle();
     void _mapProjectionMetadata();
+    void _reportedRange();
     void _headingFromVelocity();
     void _headingFromCoordinates();
     void _staleAndDisconnect();
