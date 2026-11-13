@@ -272,8 +272,10 @@ QSGNode* MapTrailSceneGraph::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         }
     }
     auto* geometry = node->geometry();
-    geometry->allocate(vertices.size());
-    std::copy(vertices.cbegin(), vertices.cend(), geometry->vertexDataAsColoredPoint2D());
+    geometry->allocate(static_cast<int>(vertices.size()));
+    if (!vertices.isEmpty()) {
+        std::copy(vertices.cbegin(), vertices.cend(), geometry->vertexDataAsColoredPoint2D());
+    }
     node->markDirty(QSGNode::DirtyGeometry);
     return node;
 }
