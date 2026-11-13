@@ -85,8 +85,8 @@ Item {
         QGCLabel {
             id: statusLabel
             width: Math.min(implicitWidth, ScreenTools.defaultFontPixelWidth * 22)
-            color: qgcPal.text
-            opacity: 0.72
+            color: "white"
+            opacity: 0.9
             font.pointSize: ScreenTools.smallFontPointSize
             elide: Text.ElideRight
             text: (root.objectId + (root.headingValid ? "" : qsTr(" · ?"))) + (root.lifecycle === "active" ? ""

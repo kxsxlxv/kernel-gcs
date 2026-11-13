@@ -13,6 +13,7 @@
 #include "QGCLoggingCategory.h"
 #include "SettingsManager.h"
 #include "SimulationObjectSettings.h"
+#include "Vehicle.h"
 
 QGC_LOGGING_CATEGORY(SimulationObjectLog, "SimulationObjects.Manager")
 
@@ -36,6 +37,10 @@ void SimulationObject::_apply(const SimulationObjectProtocol::Packet& packet, qi
     _completionReason.clear();
     _targetId = packet.targetId;
     _targetValid = packet.targetValid;
+    _targetBindingValid = packet.targetBindingValid;
+    _targetSourceKey = packet.targetSourceKey;
+    _targetSysId = packet.targetSysId;
+    _targetCompId = packet.targetCompId;
     _rangeValid = packet.rangeValid;
     _slantRangeM = packet.slantRangeM;
     // Prefer NED horizontal velocity. At low speed keep the last reliable heading.
@@ -65,6 +70,20 @@ void SimulationObject::_apply(const SimulationObjectProtocol::Packet& packet, qi
     }
     _setLifecycle(QStringLiteral("active"));
     emit changed();
+}
+
+bool SimulationObject::matchesMavlinkIdentity(quint32 sysId, int compId) const
+{
+    return _lifecycle == QLatin1String("active") && _positionValid && _targetValid &&
+           _targetBindingValid && !_targetSourceKey.isEmpty() && sysId == _targetSysId &&
+           compId >= 0 && static_cast<quint32>(compId) == _targetCompId;
+}
+
+bool SimulationObject::matchesTargetVehicle(QObject* candidate) const
+{
+    const auto* vehicle = qobject_cast<Vehicle*>(candidate);
+    return vehicle && !vehicle->isOfflineEditingVehicle() &&
+           matchesMavlinkIdentity(vehicle->id(), vehicle->defaultComponentId());
 }
 
 void SimulationObject::_setLifecycle(const QString& lifecycle)

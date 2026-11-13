@@ -28,6 +28,10 @@ struct Packet {
     QString targetId;
     quint64 targetGeneration = 0;
     bool targetValid = false;
+    bool targetBindingValid = false;
+    QString targetSourceKey;
+    quint32 targetSysId = 0;
+    quint32 targetCompId = 0;
     bool rangeValid = false;
     double slantRangeM = std::numeric_limits<double>::quiet_NaN();
     QGeoCoordinate position;

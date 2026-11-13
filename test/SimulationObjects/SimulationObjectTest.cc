@@ -210,6 +210,87 @@ void SimulationObjectTest::_reportedRange()
     QCOMPARE(missile->slantRangeM(), 0.0);
 }
 
+void SimulationObjectTest::_mavlinkTargetBinding()
+{
+    SimulationObjectProtocol::Packet decoded;
+    QJsonObject bound = state(kSession1, 1);
+    QJsonObject target = bound.value(QStringLiteral("target")).toObject();
+    target.insert(QStringLiteral("mavlink"), QJsonObject{
+        {QStringLiteral("source_key"), QStringLiteral("qgc-fixture-npc")},
+        {QStringLiteral("sysid"), 11},
+        {QStringLiteral("compid"), 1},
+    });
+    bound.insert(QStringLiteral("target"), target);
+    QVERIFY(SimulationObjectProtocol::decode(packet(bound), decoded));
+    QVERIFY(decoded.targetBindingValid);
+    QCOMPARE(decoded.targetSourceKey, QStringLiteral("qgc-fixture-npc"));
+    QCOMPARE(decoded.targetSysId, 11U);
+    QCOMPARE(decoded.targetCompId, 1U);
+
+    auto* settings = SettingsManager::instance()->simulationObjectSettings();
+    Fact* const enabled = settings->enabled();
+    const QVariant original = enabled->rawValue();
+    const auto restore = qScopeGuard([enabled, original]() { enabled->setRawValue(original); });
+    enabled->setRawValue(true);
+    SimulationObjectManager manager(settings);
+    const QHostAddress peer(QHostAddress::LocalHost);
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession1)), peer));
+    QVERIFY(manager.acceptDatagram(packet(bound), peer));
+    SimulationObject* object = manager.objectFor(kSession1, 1, QStringLiteral("missile-1"), 1);
+    QVERIFY(object);
+    QVERIFY(object->targetBindingValid());
+    QCOMPARE(object->targetSourceKey(), QStringLiteral("qgc-fixture-npc"));
+    QCOMPARE(object->targetSysId(), 11U);
+    QCOMPARE(object->targetCompId(), 1U);
+    QVERIFY(object->matchesMavlinkIdentity(11, 1));
+    QVERIFY(!object->matchesMavlinkIdentity(11, 2));
+    QVERIFY(!object->matchesMavlinkIdentity(12, 1));
+    QObject unrelated;
+    QVERIFY(!object->matchesTargetVehicle(&unrelated));
+
+    // No binding: never guess an endpoint by target.npc_id.
+    QVERIFY(manager.acceptDatagram(packet(state(kSession1, 2)), peer));
+    QVERIFY(!object->targetBindingValid());
+    QCOMPARE(object->targetSysId(), 0U);
+    QVERIFY(!object->matchesMavlinkIdentity(11, 1));
+
+    // A valid binding without a current missile position must not draw LOS.
+    QJsonObject positionMissing = bound;
+    positionMissing.insert(QStringLiteral("seq"), 3);
+    positionMissing.insert(QStringLiteral("position"), QJsonValue::Null);
+    QVERIFY(manager.acceptDatagram(packet(positionMissing), peer));
+    QVERIFY(object->targetBindingValid());
+    QVERIFY(!object->positionValid());
+    QVERIFY(!object->matchesMavlinkIdentity(11, 1));
+
+    // Restore position, then invalidate target to suppress the link.
+    QJsonObject targetInvalid = bound;
+    targetInvalid.insert(QStringLiteral("seq"), 4);
+    target.insert(QStringLiteral("valid"), false);
+    targetInvalid.insert(QStringLiteral("target"), target);
+    QVERIFY(manager.acceptDatagram(packet(targetInvalid), peer));
+    QVERIFY(!object->matchesMavlinkIdentity(11, 1));
+
+    // Restore both endpoints, then complete the object: no LOS survives completion.
+    QJsonObject restored = bound;
+    restored.insert(QStringLiteral("seq"), 5);
+    QVERIFY(manager.acceptDatagram(packet(restored), peer));
+    QVERIFY(object->matchesMavlinkIdentity(11, 1));
+    QVERIFY(manager.acceptDatagram(packet(ended(kSession1, 6)), peer));
+    QCOMPARE(object->lifecycle(), QStringLiteral("completed"));
+    QVERIFY(!object->matchesMavlinkIdentity(11, 1));
+
+    // Existing protocol validation still rejects wrong binding types.
+    QJsonObject invalid = bound;
+    QJsonObject wrongTarget = invalid.value(QStringLiteral("target")).toObject();
+    QJsonObject wrongBinding = wrongTarget.value(QStringLiteral("mavlink")).toObject();
+    wrongBinding.insert(QStringLiteral("sysid"), QStringLiteral("11"));
+    wrongTarget.insert(QStringLiteral("mavlink"), wrongBinding);
+    invalid.insert(QStringLiteral("target"), wrongTarget);
+    QVERIFY(!SimulationObjectProtocol::decode(packet(invalid), decoded));
+    QVERIFY(!manager.acceptDatagram(packet(invalid), peer));
+}
+
 void SimulationObjectTest::_identityAndLifecycle()
 {
     auto* settings = SettingsManager::instance()->simulationObjectSettings();
