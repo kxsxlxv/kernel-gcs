@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <numbers>
 
 #include <QtCore/QLineF>
 #include <QtQuick/QSGGeometry>
@@ -57,7 +58,7 @@ void appendQuad(QVector<QSGGeometry::ColoredPoint2D>& output,
         QSGGeometry::ColoredPoint2D vertex;
         vertex.set(static_cast<float>(point.x()), static_cast<float>(point.y()),
                    channel(color.redF()), channel(color.greenF()), channel(color.blueF()),
-                   channel(alpha));
+                   static_cast<uchar>(std::lround(alpha * 255)));
         output.append(vertex);
     };
     add(a, primitive.alphaStart);
@@ -81,7 +82,7 @@ void appendDot(QVector<QSGGeometry::ColoredPoint2D>& output,
     const uchar red = channel(color.redF());
     const uchar green = channel(color.greenF());
     const uchar blue = channel(color.blueF());
-    const uchar aa = channel(alpha);
+    const uchar aa = static_cast<uchar>(std::lround(alpha * 255));
     const qreal radius = width / 2;
     const auto add = [&](const QPointF& point) {
         QSGGeometry::ColoredPoint2D vertex;
@@ -153,7 +154,7 @@ void MapTrailSceneGraph::setLineStyle(const QString& style)
 void MapTrailSceneGraph::setProjectedPath(const QVariantList& points)
 {
     _points.clear();
-    _points.reserve(std::min(points.size(), kMaxPrimitives + 1));
+    _points.reserve(std::min<qsizetype>(points.size(), kMaxPrimitives + 1));
     // The monotonic history has at most 2048 points, and this additional guard
     // prevents an accidental unbounded QML input from reaching GPU geometry.
     for (qsizetype i = std::max(qsizetype(0), points.size() - qsizetype(kMaxPrimitives + 1));
@@ -166,7 +167,7 @@ void MapTrailSceneGraph::setProjectedPath(const QVariantList& points)
 void MapTrailSceneGraph::setFadeFactors(const QVariantList& factors)
 {
     _fades.clear();
-    _fades.reserve(std::min(factors.size(), kMaxPrimitives + 1));
+    _fades.reserve(std::min<qsizetype>(factors.size(), kMaxPrimitives + 1));
     for (qsizetype i = std::max(qsizetype(0), factors.size() - qsizetype(kMaxPrimitives + 1));
          i < factors.size(); ++i) {
         _fades.append(factors[i].toDouble());

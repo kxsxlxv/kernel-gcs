@@ -1,5 +1,6 @@
 #include "MapTrailHistoryTest.h"
 
+#include <QtCore/qnumeric.h>
 #include <QtPositioning/QGeoCoordinate>
 #include <QtTest/QSignalSpy>
 #include <QtQml/qqml.h>

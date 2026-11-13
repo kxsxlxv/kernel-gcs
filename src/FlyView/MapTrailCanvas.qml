@@ -5,8 +5,8 @@ import QtPositioning
 import QGroundControl
 import QGroundControl.FlightMap
 
-/// Geographic anchor follows native map transforms; the Canvas paints only
-/// offsets relative to the anchor so pan cannot leave a stale image on screen.
+/// Native scene-graph geometry follows the same geographic transform as map
+/// markers. No QImage/Canvas allocation is involved in panning or zooming.
 MapQuickItem {
     id: root
 
@@ -83,15 +83,17 @@ MapQuickItem {
         const halfWidth = trailMesh.width / 2
         const halfHeight = trailMesh.height / 2
         const projected = []
+        let previousPixel = null
         for (let i = 0; i < points.length; ++i) {
             const p = mapView.fromCoordinate(points[i], false)
             if (!isFinite(p.x) || !isFinite(p.y)
-                    || (i > 0 && Math.abs(p.x - mapView.fromCoordinate(points[i - 1], false).x)
-                         > mapView.width * 0.8)) {
+                    || (previousPixel && isFinite(previousPixel.x)
+                        && Math.abs(p.x - previousPixel.x) > mapView.width * 0.8)) {
                 projected.push(Qt.point(NaN, NaN))
             } else {
                 projected.push(Qt.point(p.x - anchor.x + halfWidth, p.y - anchor.y + halfHeight))
             }
+            previousPixel = p
         }
         trailMesh.setProjectedPath(projected)
         if (trailStyle === "fading") {
