@@ -90,7 +90,13 @@ MapQuickItem {
                 && (Math.abs(newest.x - anchor.x) > mapView.width * 0.75
                     || Math.abs(newest.y - anchor.y) > mapView.height * 0.75)) {
             trailHistory.rebaseToLatest()
-            anchor = mapView.fromCoordinate(root.coordinate, false)
+            // Read the updated value directly; the QML map-item binding is
+            // notified in this same event loop before the next frame.
+            anchor = mapView.fromCoordinate(trailHistory.renderAnchor, false)
+            if (!isFinite(anchor.x) || !isFinite(anchor.y)) {
+                trailMesh.setProjectedPath([])
+                return
+            }
         }
         const halfWidth = trailMesh.width / 2
         const halfHeight = trailMesh.height / 2
