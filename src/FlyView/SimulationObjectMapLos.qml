@@ -21,5 +21,6 @@ MapPolyline {
     line.width: 2
     opacity: 0.6
     autoFadeIn: false
-    z: QGroundControl.zOrderTrajectoryLines + 0.3
+    // Always behind Vehicle and missile symbols, regardless of model order.
+    z: QGroundControl.zOrderTrajectoryLines
 }

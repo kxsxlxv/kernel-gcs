@@ -17,6 +17,13 @@ Item {
     property bool rangeValid: false
     property real slantRangeM: NaN
 
+    // Show the numeric suffix for canonical missile IDs, preserving the full
+    // objectId in the model for identity, logs, and session tracking.
+    readonly property string displayNumber: {
+        const match = /^missile[-_](\\d+)$/i.exec(objectId)
+        return match ? match[1] : objectId
+    }
+
     readonly property string reportedRangeText: {
         if (!rangeValid || !isFinite(slantRangeM) || slantRangeM < 0) {
             return ""
@@ -74,7 +81,7 @@ Item {
         }
     }
 
-    // Keep the ID/status legible but unobtrusive; the dark pill is for range only.
+    // Number only; lifecycle remains encoded by the missile artwork color.
     Column {
         anchors.left: parent.right
         anchors.leftMargin: ScreenTools.defaultFontPixelWidth / 2
@@ -89,10 +96,7 @@ Item {
             opacity: 0.9
             font.pointSize: ScreenTools.smallFontPointSize
             elide: Text.ElideRight
-            text: (root.objectId + (root.headingValid ? "" : qsTr(" · ?"))) + (root.lifecycle === "active" ? ""
-                  : " (" + (root.lifecycle === "completed" ? qsTr("complete")
-                                                : root.lifecycle === "disconnected" ? qsTr("disconnected")
-                                                : qsTr("stale")) + ")")
+            text: root.displayNumber
         }
 
         Rectangle {

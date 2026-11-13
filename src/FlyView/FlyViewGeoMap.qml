@@ -147,6 +147,19 @@ GeoMapView {
         }
     }
 
+    // LOS nodes are constructed before marker nodes; in 3D, the line also
+    // clips its first screen-space segment to protect the missile symbol.
+    Repeater {
+        model: QGroundControl.simulationObjects
+
+        SimulationObjectGeoMapLos {
+            scene: root.scene
+            surfaceModel: root.surfaceModel
+            simulationObject: object
+            missileHomeTerrainBias: root._activeVehicleHomeTerrainBias
+        }
+    }
+
     // Simulation-only missiles, not selectable MAVLink vehicles.
     Repeater {
         model: QGroundControl.simulationObjects
@@ -156,17 +169,6 @@ GeoMapView {
             scene: root.scene
             surfaceModel: root.surfaceModel
             homeTerrainBias: root._activeVehicleHomeTerrainBias
-        }
-    }
-
-    Repeater {
-        model: QGroundControl.simulationObjects
-
-        SimulationObjectGeoMapLos {
-            scene: root.scene
-            surfaceModel: root.surfaceModel
-            simulationObject: object
-            missileHomeTerrainBias: root._activeVehicleHomeTerrainBias
         }
     }
 
