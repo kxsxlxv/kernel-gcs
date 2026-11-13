@@ -3,6 +3,7 @@
 #include <QtCore/QPointF>
 #include <QtCore/QString>
 #include <QtCore/QVariantList>
+#include <QtCore/QVector>
 #include <QtGui/QColor>
 #include <QtQuick/QQuickItem>
 
