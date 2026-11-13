@@ -8,6 +8,7 @@ class MapTrailHistoryTest : public UnitTest
 
 private slots:
     void _rollingWindow();
+    void _renderAnchor();
     void _stationaryAndResume();
     void _liveLifetimeChange();
     void _independentHistories();

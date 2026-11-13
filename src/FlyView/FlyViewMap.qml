@@ -167,10 +167,11 @@ FlightMap {
 
     // The trail history is independent of Vehicle::trajectoryPoints (flight distance).
     // Fixed QML renderer count: one canvas per tracked object, never one item per sample.
-    Repeater {
+    // Geographic map items keep trails registered to the same map transform
+    // as Vehicle and missile markers during drag/zoom.
+    MapItemView {
         model: QGroundControl.multiVehicleManager.vehicles
         delegate: MapTrailCanvas {
-            anchors.fill: _root
             mapView: _root
             trackedObject: object
             simulated: false
@@ -179,10 +180,9 @@ FlightMap {
         }
     }
 
-    Repeater {
+    MapItemView {
         model: QGroundControl.simulationObjects
         delegate: MapTrailCanvas {
-            anchors.fill: _root
             mapView: _root
             trackedObject: object
             simulated: true
