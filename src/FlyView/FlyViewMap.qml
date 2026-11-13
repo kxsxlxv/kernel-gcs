@@ -191,6 +191,16 @@ FlightMap {
         }
     }
 
+    // Create LOS items before either aircraft or missile markers so QtLocation
+    // does not paint a later MapItemView over the symbols.
+    // Read-only LOS visualization; no line without a valid explicit MAVLink binding.
+    MapItemView {
+        model: QGroundControl.simulationObjects
+        delegate: SimulationObjectMapLos {
+            simulationObject: object
+        }
+    }
+
     // Add the vehicles to the map
     MapItemView {
         model: QGroundControl.multiVehicleManager.vehicles
@@ -209,14 +219,6 @@ FlightMap {
             simulationObject: object
             markerSize: pipMode ? ScreenTools.defaultFontPixelHeight : ScreenTools.defaultFontPixelHeight * 2
             showLabel: !pipMode
-        }
-    }
-
-    // Read-only LOS visualization; no line without a valid explicit MAVLink binding.
-    MapItemView {
-        model: QGroundControl.simulationObjects
-        delegate: SimulationObjectMapLos {
-            simulationObject: object
         }
     }
 

@@ -3,6 +3,7 @@ import QtQuick3D
 import QtPositioning
 
 import QGroundControl
+import QGroundControl.Controls
 import QGroundControl.FlyView
 import QGroundControl.GeoMap
 
@@ -16,6 +17,7 @@ GeoMapItem {
 
     readonly property var _camera: scene ? scene.camera : null
     readonly property real _screenFactor: _camera ? _camera.unitsPerPixelAtUnitDistance : 0
+    readonly property real markerRadiusPx: ScreenTools.defaultFontPixelHeight * 1.25
     readonly property var losCoordinates: {
         if (!endpoints.drawable) {
             return []
@@ -38,8 +40,24 @@ GeoMapItem {
         if (!isFinite(missileHeight) || !isFinite(targetHeight)) {
             return []
         }
+        // Clip only the rendered line's start so a translucent 3D ribbon can
+        // never overpaint the missile icon. This does not change object state
+        // or the simulator-reported range.
+        const horizontalMeters = missile.distanceTo(target)
+        const verticalMeters = targetHeight - missileHeight
+        const segmentMeters = Math.sqrt(horizontalMeters * horizontalMeters + verticalMeters * verticalMeters)
+        const metersPerPixel = root._camera ? root._camera.distance * root._screenFactor : 0
+        const insetMeters = Math.max(0, root.markerRadiusPx * metersPerPixel)
+        if (!isFinite(segmentMeters) || segmentMeters <= insetMeters || segmentMeters < 0.001) {
+            return []
+        }
+        const fraction = insetMeters / segmentMeters
+        const start = horizontalMeters > 0.001
+            ? missile.atDistanceAndAzimuth(horizontalMeters * fraction, missile.azimuthTo(target))
+            : missile
         return [
-            QtPositioning.coordinate(missile.latitude, missile.longitude, missileHeight),
+            QtPositioning.coordinate(start.latitude, start.longitude,
+                                     missileHeight + fraction * verticalMeters),
             QtPositioning.coordinate(target.latitude, target.longitude, targetHeight)
         ]
     }
@@ -56,6 +74,7 @@ GeoMapItem {
     visible: endpoints.drawable && losCoordinates.length === 2 && !!_geometry
              && _geometry.pointCount === 2
     node3DOpacity: 1
+    z: QGroundControl.zOrderTrajectoryLines
 
     function _reload() {
         if (!root._geometry) {
