@@ -114,7 +114,19 @@ SimulationObjectPresentation::Pose SimulationObjectPresentation::sampleAt(qint64
         return result;
     }
     const qint64 extrapMs = std::min(targetMs - last.receiveMs, kExtrapolationLimitMs);
-    const double dt = extrapMs / 1000.0;
+    // Map simulation time to wall time using the last two accepted samples.
+    // The bounded rate also prevents a corrupted/time-warped timeline from
+    // creating an unbounded visual jump. With only one frame, assume 1x.
+    double simSecondsPerWallSecond = 1.0;
+    if (_frames.size() > 1) {
+        const Frame& previous = _frames[_frames.size() - 2];
+        const qint64 wallMs = last.receiveMs - previous.receiveMs;
+        if (wallMs > 0 && last.simTimeNs > previous.simTimeNs) {
+            const double simMs = (last.simTimeNs - previous.simTimeNs) / 1000000.0;
+            simSecondsPerWallSecond = std::clamp(simMs / wallMs, 0.0, 4.0);
+        }
+    }
+    const double dt = (extrapMs / 1000.0) * simSecondsPerWallSecond;
     const double horizontal = std::hypot(last.northMps, last.eastMps) * dt;
     if (!std::isfinite(horizontal) || !std::isfinite(last.downMps * dt)) {
         return result;
@@ -125,7 +137,7 @@ SimulationObjectPresentation::Pose SimulationObjectPresentation::sampleAt(qint64
         result.coordinate = last.coordinate.atDistanceAndAzimuth(horizontal, bearing);
     }
     result.coordinate.setAltitude(last.coordinate.altitude() - last.downMps * dt);
-    const quint64 advanceNs = static_cast<quint64>(extrapMs) * 1000000ULL;
+    const quint64 advanceNs = static_cast<quint64>(std::llround(dt * 1e9));
     if (advanceNs <= std::numeric_limits<quint64>::max() - last.simTimeNs) {
         result.simTimeNs = last.simTimeNs + advanceNs;
     }
