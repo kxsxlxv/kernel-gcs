@@ -57,7 +57,11 @@ MapQuickItem {
         }
         checkStopPolicy()
         if (!(clearWhenStopped && stopped())) {
-            trailHistory.append(trackedObject.coordinate)
+            if (simulated) {
+                trailHistory.appendWithSimTime(trackedObject.coordinate, trackedObject.sampleSimTimeNs)
+            } else {
+                trailHistory.append(trackedObject.coordinate)
+            }
         }
     }
 
@@ -69,8 +73,31 @@ MapQuickItem {
         }
     }
 
+    function displayedCoordinates() {
+        const points = simulated && trackedObject
+            ? trailHistory.coordinatesThroughSimTime(trackedObject.renderSimTimeNs)
+            : trailHistory.coordinates()
+        // This tip is presentation-only; authoritative trail samples remain untouched.
+        if (simulated && trackedObject && trackedObject.positionValid
+                && trackedObject.renderCoordinate.isValid && points.length > 0) {
+            points.push(trackedObject.renderCoordinate)
+        }
+        return points
+    }
+
+    function displayedFadeFactors() {
+        const factors = simulated && trackedObject
+            ? trailHistory.fadeFactorsThroughSimTime(trackedObject.renderSimTimeNs)
+            : trailHistory.fadeFactors()
+        if (simulated && trackedObject && trackedObject.positionValid
+                && trackedObject.renderCoordinate.isValid && factors.length > 0) {
+            factors.push(1.0)
+        }
+        return factors
+    }
+
     function reproject() {
-        const points = trailHistory.coordinates()
+        const points = displayedCoordinates()
         if (!mapView || points.length < 2 || !root.coordinate.isValid) {
             trailMesh.setProjectedPath([])
             return
@@ -115,7 +142,7 @@ MapQuickItem {
         }
         trailMesh.setProjectedPath(projected)
         if (trailStyle === "fading") {
-            trailMesh.setFadeFactors(trailHistory.fadeFactors())
+            trailMesh.setFadeFactors(root.displayedFadeFactors())
         }
     }
 
@@ -141,7 +168,7 @@ MapQuickItem {
         onPathRebuilt: root.scheduleReproject()
         onFadingChanged: {
             if (root.trailStyle === "fading") {
-                trailMesh.setFadeFactors(trailHistory.fadeFactors())
+                trailMesh.setFadeFactors(root.displayedFadeFactors())
             }
         }
     }
@@ -158,6 +185,11 @@ MapQuickItem {
         ignoreUnknownSignals: true
         function onCoordinateChanged() { root.record() }
         function onChanged() { root.record() }
+        function onPresentationChanged() {
+            if (root.simulated) {
+                root.scheduleReproject()
+            }
+        }
     }
 
     Connections {

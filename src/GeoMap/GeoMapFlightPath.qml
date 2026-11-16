@@ -85,12 +85,22 @@ GeoMapItem {
         }
         _applyStopPolicy()
         if (!(clearWhenStopped && _stopped())) {
-            trailHistory.append(_sourceObject.coordinate)
+            if (_simulated) {
+                trailHistory.appendWithSimTime(_sourceObject.coordinate, _sourceObject.sampleSimTimeNs)
+            } else {
+                trailHistory.append(_sourceObject.coordinate)
+            }
         }
     }
 
     function _displayCoordinates() {
-        const coordinates = trailHistory.coordinates()
+        const coordinates = _simulated
+            ? trailHistory.coordinatesThroughSimTime(simulationObject.renderSimTimeNs)
+            : trailHistory.coordinates()
+        if (_simulated && simulationObject.positionValid
+                && simulationObject.renderCoordinate.isValid && coordinates.length > 0) {
+            coordinates.push(simulationObject.renderCoordinate)
+        }
         if (hasAmslAltitude) {
             return coordinates
         }
@@ -105,10 +115,21 @@ GeoMapItem {
         return clamped
     }
 
+    function _displayFadeFactors() {
+        const factors = _simulated
+            ? trailHistory.fadeFactorsThroughSimTime(simulationObject.renderSimTimeNs)
+            : trailHistory.fadeFactors()
+        if (_simulated && simulationObject.positionValid
+                && simulationObject.renderCoordinate.isValid && factors.length > 0) {
+            factors.push(1.0)
+        }
+        return factors
+    }
+
     function _reloadPath() {
         if (_geometry) {
             _geometry.setPath(_displayCoordinates(), [],
-                              _style === "fading" ? trailHistory.fadeFactors() : [])
+                              _style === "fading" ? _displayFadeFactors() : [])
         }
     }
 
@@ -135,10 +156,10 @@ GeoMapItem {
         lifetimeMs: root._lifetimeMs
         onPointAppended: (coordinate) => {
             if (root._geometry) {
-                if (root.hasAmslAltitude) {
-                    root._geometry.appendPoint(coordinate)
-                } else {
+                if (root._simulated || !root.hasAmslAltitude) {
                     root._reloadPath()
+                } else {
+                    root._geometry.appendPoint(coordinate)
                 }
             }
         }
@@ -155,6 +176,23 @@ GeoMapItem {
         ignoreUnknownSignals: true
         function onCoordinateChanged() { root._record() }
         function onChanged() { root._record() }
+    }
+
+    Timer {
+        id: presentationTrailTimer
+        interval: 33
+        repeat: false
+        onTriggered: root._reloadPath()
+    }
+
+    Connections {
+        target: root._simulated ? root.simulationObject : null
+        ignoreUnknownSignals: true
+        function onPresentationChanged() {
+            if (!presentationTrailTimer.running) {
+                presentationTrailTimer.start()
+            }
+        }
     }
 
     Connections {
