@@ -7,7 +7,7 @@
 
 namespace {
 
-double wrapHeading(double degrees)
+double wrapSimulationPresentationHeading(double degrees)
 {
     const double wrapped = std::fmod(degrees, 360.0);
     return wrapped < 0.0 ? wrapped + 360.0 : wrapped;
@@ -77,7 +77,7 @@ SimulationObjectPresentation::Pose SimulationObjectPresentation::_interpolate(co
               from.simTimeNs + static_cast<quint64>((to.simTimeNs - from.simTimeNs) * fraction)};
     if (from.headingValid && to.headingValid) {
         const double shortest = std::remainder(to.heading - from.heading, 360.0);
-        pose.heading = wrapHeading(from.heading + shortest * fraction);
+        pose.heading = wrapSimulationPresentationHeading(from.heading + shortest * fraction);
     } else if (to.headingValid) {
         pose.heading = to.heading;
         pose.headingValid = true;
@@ -132,7 +132,7 @@ SimulationObjectPresentation::Pose SimulationObjectPresentation::sampleAt(qint64
         return result;
     }
     if (horizontal > 0.0) {
-        const double bearing = wrapHeading(std::atan2(last.eastMps, last.northMps) * 180.0 /
+        const double bearing = wrapSimulationPresentationHeading(std::atan2(last.eastMps, last.northMps) * 180.0 /
                                            std::numbers::pi);
         result.coordinate = last.coordinate.atDistanceAndAzimuth(horizontal, bearing);
     }
