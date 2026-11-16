@@ -19,4 +19,5 @@ private slots:
     void _presentationInterpolation();
     void _presentationExtrapolationAndBoundaries();
     void _presentationTenObjects();
+    void _presentationLifecycleAndSessionReset();
 };

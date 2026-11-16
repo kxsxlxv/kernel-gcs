@@ -540,6 +540,16 @@ void SimulationObjectTest::_presentationExtrapolationAndBoundaries()
                 false, 0, 0, 0, false);
     QCOMPARE(view.sampleCount(), 0);
     QVERIFY(!view.sampleAt(1400).coordinate.isValid());
+
+    // Two simulation seconds per wall-clock second; velocity is expressed
+    // in simulated meters per simulated second.
+    view.append(origin, QStringLiteral("AMSL_EGM96"), 0, 2000, 0, true,
+                true, 10, 0, 0, true);
+    view.append(origin.atDistanceAndAzimuth(1, 0), QStringLiteral("AMSL_EGM96"),
+                200000000, 2100, 0, true, true, 10, 0, 0, true);
+    const auto fast = view.sampleAt(2250); // 50 ms * 2x => another meter.
+    QCOMPARE_LT(std::abs(origin.distanceTo(fast.coordinate) - 2), 0.1);
+    QCOMPARE(fast.simTimeNs, 300000000ULL);
 }
 
 void SimulationObjectTest::_presentationTenObjects()
@@ -558,6 +568,60 @@ void SimulationObjectTest::_presentationTenObjects()
     views[0].clear();
     QVERIFY(!views[0].sampleAt(150).coordinate.isValid());
     QCOMPARE(views[1].sampleCount(), 2);
+}
+
+
+void SimulationObjectTest::_presentationLifecycleAndSessionReset()
+{
+    auto* settings = SettingsManager::instance()->simulationObjectSettings();
+    Fact* const enabled = settings->enabled();
+    const QVariant original = enabled->rawValue();
+    const auto restore = qScopeGuard([enabled, original]() { enabled->setRawValue(original); });
+    enabled->setRawValue(true);
+
+    SimulationObjectManager manager(settings);
+    const QHostAddress peer(QHostAddress::LocalHost);
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession1)), peer));
+    QVERIFY(manager.acceptDatagram(packet(state(kSession1, 1)), peer));
+    auto* missile = manager.objectFor(kSession1, 1, QStringLiteral("missile-1"), 1);
+    QVERIFY(missile);
+    QVERIFY(missile->renderCoordinate().isValid());
+    QCOMPARE(missile->renderSimTimeNs(), QStringLiteral("250000000"));
+
+    // A valid packet with position:null must immediately hide the marker/LOS,
+    // even if previous history is still buffered for the 100 ms delay.
+    QJsonObject missing = state(kSession1, 2);
+    missing.insert(QStringLiteral("sim_time_ns"), QStringLiteral("350000000"));
+    missing.insert(QStringLiteral("position"), QJsonValue::Null);
+    QVERIFY(manager.acceptDatagram(packet(missing), peer));
+    QVERIFY(!missile->positionValid());
+    QVERIFY(!missile->renderCoordinate().isValid());
+
+    QJsonObject resume = state(kSession1, 3);
+    resume.insert(QStringLiteral("sim_time_ns"), QStringLiteral("450000000"));
+    QVERIFY(manager.acceptDatagram(packet(resume), peer));
+    QVERIFY(missile->renderCoordinate().isValid());
+    QCOMPARE(missile->renderSimTimeNs(), QStringLiteral("450000000"));
+
+    QJsonObject completed = ended(kSession1, 4);
+    completed.insert(QStringLiteral("sim_time_ns"), QStringLiteral("550000000"));
+    QVERIFY(manager.acceptDatagram(packet(completed), peer));
+    QCOMPARE(missile->lifecycle(), QStringLiteral("completed"));
+    manager.updatePresentationAt(10000);
+    // A completed marker stays frozen; no late extrapolation/animation.
+    QCOMPARE(missile->renderSimTimeNs(), QStringLiteral("450000000"));
+
+    QJsonObject sessionEnd = envelope(kSession1, QStringLiteral("session_end"));
+    sessionEnd.insert(QStringLiteral("sim_time_ns"), QStringLiteral("600000000"));
+    QVERIFY(manager.acceptDatagram(packet(sessionEnd), peer));
+    QCOMPARE(manager.objects()->count(), 0);
+
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession2)), peer));
+    QVERIFY(manager.acceptDatagram(packet(state(kSession2, 1)), peer));
+    auto* fresh = manager.objectFor(kSession2, 1, QStringLiteral("missile-1"), 1);
+    QVERIFY(fresh);
+    QVERIFY(fresh != missile);
+    QCOMPARE(fresh->renderSimTimeNs(), QStringLiteral("250000000"));
 }
 
 void SimulationObjectTest::_receiverStatus()
