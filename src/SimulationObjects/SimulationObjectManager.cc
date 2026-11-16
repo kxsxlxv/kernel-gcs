@@ -422,4 +422,14 @@ void SimulationObjectManager::expireAt(qint64 nowMs)
             object->_setLifecycle(sourceDisconnected ? QStringLiteral("disconnected") : QStringLiteral("stale"));
         }
     }
+    if (_presentationTimer.isActive()) {
+        const bool anyActiveMissile = std::any_of(_entries.cbegin(), _entries.cend(),
+            [](const SimulationObject* object) {
+                return object && object->_kind == QLatin1String("missile") &&
+                       object->_positionValid && object->_lifecycle == QLatin1String("active");
+            });
+        if (!anyActiveMissile) {
+            _presentationTimer.stop();
+        }
+    }
 }
