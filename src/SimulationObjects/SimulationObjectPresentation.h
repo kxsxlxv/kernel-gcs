@@ -14,6 +14,7 @@ public:
         QGeoCoordinate coordinate;
         double heading = 0.0;
         bool headingValid = false;
+        quint64 simTimeNs = 0;
     };
 
     static constexpr qint64 kDisplayDelayMs = 100;

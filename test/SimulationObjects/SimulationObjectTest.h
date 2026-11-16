@@ -16,4 +16,7 @@ private slots:
     void _headingFromCoordinates();
     void _staleAndDisconnect();
     void _receiverStatus();
+    void _presentationInterpolation();
+    void _presentationExtrapolationAndBoundaries();
+    void _presentationTenObjects();
 };

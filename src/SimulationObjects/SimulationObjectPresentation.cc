@@ -56,7 +56,7 @@ void SimulationObjectPresentation::append(const QGeoCoordinate& coordinate, cons
 
 SimulationObjectPresentation::Pose SimulationObjectPresentation::_pose(const Frame& frame)
 {
-    return {frame.coordinate, frame.heading, frame.headingValid};
+    return {frame.coordinate, frame.heading, frame.headingValid, frame.simTimeNs};
 }
 
 SimulationObjectPresentation::Pose SimulationObjectPresentation::_interpolate(const Frame& from,
@@ -73,7 +73,8 @@ SimulationObjectPresentation::Pose SimulationObjectPresentation::_interpolate(co
     coordinate.setAltitude(from.coordinate.altitude() +
                            (to.coordinate.altitude() - from.coordinate.altitude()) * fraction);
 
-    Pose pose{coordinate, from.heading, from.headingValid};
+    Pose pose{coordinate, from.heading, from.headingValid,
+              from.simTimeNs + static_cast<quint64>((to.simTimeNs - from.simTimeNs) * fraction)};
     if (from.headingValid && to.headingValid) {
         const double shortest = std::remainder(to.heading - from.heading, 360.0);
         pose.heading = wrapHeading(from.heading + shortest * fraction);
@@ -124,5 +125,9 @@ SimulationObjectPresentation::Pose SimulationObjectPresentation::sampleAt(qint64
         result.coordinate = last.coordinate.atDistanceAndAzimuth(horizontal, bearing);
     }
     result.coordinate.setAltitude(last.coordinate.altitude() - last.downMps * dt);
+    const quint64 advanceNs = static_cast<quint64>(extrapMs) * 1000000ULL;
+    if (advanceNs <= std::numeric_limits<quint64>::max() - last.simTimeNs) {
+        result.simTimeNs = last.simTimeNs + advanceNs;
+    }
     return result;
 }

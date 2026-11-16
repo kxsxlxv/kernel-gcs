@@ -114,9 +114,10 @@ void SimulationObject::_updatePresentation(qint64 nowMs)
         return;
     }
     const auto pose = _presentation.sampleAt(nowMs);
-    if (pose.coordinate != _renderCoordinate ||
+    if (pose.coordinate != _renderCoordinate || pose.simTimeNs != _renderSimTimeNs ||
         pose.heading != _renderHeading || pose.headingValid != _renderHeadingValid) {
         _renderCoordinate = pose.coordinate;
+        _renderSimTimeNs = pose.simTimeNs;
         _renderHeading = pose.heading;
         _renderHeadingValid = pose.headingValid;
         emit presentationChanged();

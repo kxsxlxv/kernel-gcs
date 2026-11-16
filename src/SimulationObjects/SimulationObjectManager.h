@@ -38,6 +38,8 @@ class SimulationObject : public QObject
     Q_PROPERTY(bool rangeValid READ rangeValid NOTIFY changed)
     Q_PROPERTY(QGeoCoordinate coordinate READ coordinate NOTIFY changed)
     Q_PROPERTY(QGeoCoordinate renderCoordinate READ renderCoordinate NOTIFY presentationChanged)
+    Q_PROPERTY(QString sampleSimTimeNs READ sampleSimTimeNs NOTIFY changed)
+    Q_PROPERTY(QString renderSimTimeNs READ renderSimTimeNs NOTIFY presentationChanged)
     Q_PROPERTY(double renderHeading READ renderHeading NOTIFY presentationChanged)
     Q_PROPERTY(bool renderHeadingValid READ renderHeadingValid NOTIFY presentationChanged)
     Q_PROPERTY(bool positionValid READ positionValid NOTIFY changed)
@@ -70,6 +72,8 @@ public:
     bool rangeValid() const { return _rangeValid; }
     QGeoCoordinate coordinate() const { return _coordinate; }
     QGeoCoordinate renderCoordinate() const { return _renderCoordinate; }
+    QString sampleSimTimeNs() const { return QString::number(_lastPositionSimTimeNs); }
+    QString renderSimTimeNs() const { return QString::number(_renderSimTimeNs); }
     double renderHeading() const { return _renderHeading; }
     bool renderHeadingValid() const { return _renderHeadingValid; }
     bool positionValid() const { return _positionValid; }
@@ -107,6 +111,7 @@ private:
     bool _rangeValid = false;
     QGeoCoordinate _coordinate;
     QGeoCoordinate _renderCoordinate;
+    quint64 _renderSimTimeNs = 0;
     double _renderHeading = 0.0;
     bool _renderHeadingValid = false;
     SimulationObjectPresentation _presentation;
