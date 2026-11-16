@@ -40,6 +40,7 @@ struct Packet {
     bool velocityValid = false;
     double northMps = 0;
     double eastMps = 0;
+    double downMps = 0;
 };
 
 /// Decode the versioned, simulation-only JSON wire profile. No MAVLink frames are accepted.
