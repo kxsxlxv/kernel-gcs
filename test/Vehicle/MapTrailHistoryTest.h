@@ -16,4 +16,5 @@ private slots:
     void _independentHistories();
     void _limitsAndDisable();
     void _qmlTypeRegistered();
+    void _simulationTimeView();
 };
