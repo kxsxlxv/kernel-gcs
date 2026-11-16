@@ -181,10 +181,9 @@ bool velocity(const QJsonValue& value, SimulationObjectProtocol::Packet& packet)
         return false;
     }
     const double bound = std::numeric_limits<double>::max();
-    double downMps = 0;
     if (!real(object.value(QStringLiteral("north_mps")), packet.northMps, -bound, bound) ||
         !real(object.value(QStringLiteral("east_mps")), packet.eastMps, -bound, bound) ||
-        !real(object.value(QStringLiteral("down_mps")), downMps, -bound, bound)) {
+        !real(object.value(QStringLiteral("down_mps")), packet.downMps, -bound, bound)) {
         return false;
     }
     packet.velocityValid = true;

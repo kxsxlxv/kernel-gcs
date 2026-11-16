@@ -111,6 +111,34 @@ void MapTrailHistoryTest::_sceneGraphFading()
     QVERIFY(many.size() <= MapTrailSceneGraph::kMaxPrimitives);
 }
 
+void MapTrailHistoryTest::_simulationTimeView()
+{
+    MapTrailHistory history;
+    history.setLifetimeMs(1000);
+    const quint64 first = 9007199254741000ULL; // Above QML double's exact-integer range.
+    const auto b = kOrigin.atDistanceAndAzimuth(10, 90);
+    const auto c = kOrigin.atDistanceAndAzimuth(20, 90);
+    history.appendStampedAt(kOrigin, 0, first);
+    history.appendStampedAt(b, 200, first + 100000000ULL);
+    history.appendStampedAt(c, 400, first + 200000000ULL);
+    QCOMPARE(history.count(), 3);
+
+    const QVariantList early = history.coordinatesThroughSimTime(QString::number(first));
+    QCOMPARE(early.size(), 1);
+    QCOMPARE(early.first().value<QGeoCoordinate>(), kOrigin);
+    const QVariantList halfway = history.coordinatesThroughSimTime(QString::number(first + 150000000ULL));
+    QCOMPARE(halfway.size(), 2);
+    QCOMPARE(halfway.last().value<QGeoCoordinate>(), b);
+    QCOMPARE(history.fadeFactorsThroughSimTime(QString::number(first)).size(), 1);
+    QVERIFY(history.coordinatesThroughSimTime(QStringLiteral("invalid")).isEmpty());
+
+    // Presentation trimming does not discard future samples or affect TTL.
+    QCOMPARE(history.count(), 3);
+    history.expireAt(1100);
+    QCOMPARE(history.count(), 2);
+    QCOMPARE(history.coordinatesThroughSimTime(QString::number(first + 200000000ULL)).size(), 2);
+}
+
 void MapTrailHistoryTest::_rollingWindow()
 {
     MapTrailHistory history;

@@ -33,15 +33,21 @@ public:
     QGeoCoordinate renderAnchor() const { return _renderAnchor; }
 
     Q_INVOKABLE void append(const QGeoCoordinate& coordinate);
+    /// Store the authoritative simulation timestamp without converting it through QML double.
+    Q_INVOKABLE void appendWithSimTime(const QGeoCoordinate& coordinate, const QString& simTimeNs);
     Q_INVOKABLE void clear();
     /// Re-anchor only when the projected trail approaches the viewport boundary.
     /// Ordinary telemetry updates must not move the native MapQuickItem.
     Q_INVOKABLE void rebaseToLatest();
     Q_INVOKABLE QVariantList coordinates() const;
     Q_INVOKABLE QVariantList fadeFactors() const;
+    /// Presentation-only views; future raw samples stay stored but are not drawn yet.
+    Q_INVOKABLE QVariantList coordinatesThroughSimTime(const QString& simTimeNs) const;
+    Q_INVOKABLE QVariantList fadeFactorsThroughSimTime(const QString& simTimeNs) const;
 
     /// Deterministic monotonic-clock seam for tests.
     void appendAt(const QGeoCoordinate& coordinate, qint64 nowMs);
+    void appendStampedAt(const QGeoCoordinate& coordinate, qint64 nowMs, quint64 simTimeNs);
     void expireAt(qint64 nowMs);
 
 signals:
@@ -57,8 +63,11 @@ private:
     struct Sample {
         QGeoCoordinate coordinate;
         qint64 timeMs = 0;
+        quint64 simTimeNs = 0;
+        bool stamped = false;
     };
 
+    void _appendAt(const QGeoCoordinate& coordinate, qint64 nowMs, quint64 simTimeNs, bool stamped);
     QList<Sample> _samples;
     QGeoCoordinate _renderAnchor;
     QElapsedTimer _clock;

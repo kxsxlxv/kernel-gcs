@@ -12,6 +12,7 @@
 #include <QtPositioning/QGeoCoordinate>
 
 #include "SimulationObjectProtocol.h"
+#include "SimulationObjectPresentation.h"
 
 class QmlObjectListModel;
 class QUdpSocket;
@@ -36,6 +37,11 @@ class SimulationObject : public QObject
     Q_PROPERTY(double slantRangeM READ slantRangeM NOTIFY changed)
     Q_PROPERTY(bool rangeValid READ rangeValid NOTIFY changed)
     Q_PROPERTY(QGeoCoordinate coordinate READ coordinate NOTIFY changed)
+    Q_PROPERTY(QGeoCoordinate renderCoordinate READ renderCoordinate NOTIFY presentationChanged)
+    Q_PROPERTY(QString sampleSimTimeNs READ sampleSimTimeNs NOTIFY changed)
+    Q_PROPERTY(QString renderSimTimeNs READ renderSimTimeNs NOTIFY presentationChanged)
+    Q_PROPERTY(double renderHeading READ renderHeading NOTIFY presentationChanged)
+    Q_PROPERTY(bool renderHeadingValid READ renderHeadingValid NOTIFY presentationChanged)
     Q_PROPERTY(bool positionValid READ positionValid NOTIFY changed)
     Q_PROPERTY(QString altitudeDatum READ altitudeDatum NOTIFY changed)
     Q_PROPERTY(double heading READ heading NOTIFY changed)
@@ -65,6 +71,11 @@ public:
     double slantRangeM() const { return _slantRangeM; }
     bool rangeValid() const { return _rangeValid; }
     QGeoCoordinate coordinate() const { return _coordinate; }
+    QGeoCoordinate renderCoordinate() const { return _renderCoordinate; }
+    QString sampleSimTimeNs() const { return QString::number(_lastPositionSimTimeNs); }
+    QString renderSimTimeNs() const { return QString::number(_renderSimTimeNs); }
+    double renderHeading() const { return _renderHeading; }
+    bool renderHeadingValid() const { return _renderHeadingValid; }
     bool positionValid() const { return _positionValid; }
     QString altitudeDatum() const { return _altitudeDatum; }
     double heading() const { return _heading; }
@@ -74,12 +85,14 @@ public:
 
 signals:
     void changed();
+    void presentationChanged();
 
 private:
     friend class SimulationObjectManager;
 
     void _apply(const SimulationObjectProtocol::Packet& packet, qint64 receiveMs);
     void _setLifecycle(const QString& lifecycle);
+    void _updatePresentation(qint64 nowMs);
 
     QString _id;
     QString _kind;
@@ -97,6 +110,11 @@ private:
     double _slantRangeM = std::numeric_limits<double>::quiet_NaN();
     bool _rangeValid = false;
     QGeoCoordinate _coordinate;
+    QGeoCoordinate _renderCoordinate;
+    quint64 _renderSimTimeNs = 0;
+    double _renderHeading = 0.0;
+    bool _renderHeadingValid = false;
+    SimulationObjectPresentation _presentation;
     bool _positionValid = false;
     QString _altitudeDatum;
     double _heading = 0;
@@ -130,6 +148,8 @@ public:
     // Public for deterministic protocol/lifecycle tests; identical validation to socket ingress.
     [[nodiscard]] bool acceptDatagram(const QByteArray& bytes, const QHostAddress& sender);
     void expireAt(qint64 monotonicMs);
+    /// Shared presentation tick; public to allow deterministic test sampling.
+    void updatePresentationAt(qint64 monotonicMs);
     SimulationObject* objectFor(const QString& sessionId, quint64 epoch,
                                 const QString& id, quint64 generation) const;
 
@@ -156,6 +176,7 @@ private:
     QmlObjectListModel* _objects = nullptr;
     QUdpSocket* _socket = nullptr;
     QTimer _cleanupTimer;
+    QTimer _presentationTimer;
     QElapsedTimer _clock;
     QHostAddress _allowedPeer;
     QString _receiverStatus = QStringLiteral("disabled");

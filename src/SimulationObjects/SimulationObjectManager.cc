@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <utility>
 
 #include <QtCore/QApplicationStatic>
 #include <QtNetwork/QUdpSocket>
@@ -69,6 +70,16 @@ void SimulationObject::_apply(const SimulationObjectProtocol::Packet& packet, qi
         _lastPositionSimTimeNs = packet.simTimeNs;
     }
     _setLifecycle(QStringLiteral("active"));
+    if (_kind == QLatin1String("missile")) {
+        if (packet.positionValid) {
+            _presentation.append(packet.position, packet.altitudeDatum, packet.simTimeNs, receiveMs,
+                                 _heading, _headingValid, packet.velocityValid, packet.northMps,
+                                 packet.eastMps, packet.downMps, _motionState == QLatin1String("moving"));
+        } else {
+            _presentation.clear();
+        }
+        _updatePresentation(receiveMs);
+    }
     emit changed();
 }
 
@@ -90,7 +101,26 @@ void SimulationObject::_setLifecycle(const QString& lifecycle)
 {
     if (_lifecycle != lifecycle) {
         _lifecycle = lifecycle;
+        if (_lifecycle != QLatin1String("active")) {
+            _presentation.clear();
+        }
         emit changed();
+    }
+}
+
+void SimulationObject::_updatePresentation(qint64 nowMs)
+{
+    if (_kind != QLatin1String("missile") || _lifecycle != QLatin1String("active")) {
+        return;
+    }
+    const auto pose = _presentation.sampleAt(nowMs);
+    if (pose.coordinate != _renderCoordinate || pose.simTimeNs != _renderSimTimeNs ||
+        pose.heading != _renderHeading || pose.headingValid != _renderHeadingValid) {
+        _renderCoordinate = pose.coordinate;
+        _renderSimTimeNs = pose.simTimeNs;
+        _renderHeading = pose.heading;
+        _renderHeadingValid = pose.headingValid;
+        emit presentationChanged();
     }
 }
 
@@ -102,6 +132,11 @@ SimulationObjectManager::SimulationObjectManager(SimulationObjectSettings* setti
     _clock.start();
     _cleanupTimer.setInterval(100);
     connect(&_cleanupTimer, &QTimer::timeout, this, [this]() { expireAt(_clock.elapsed()); });
+    _presentationTimer.setTimerType(Qt::PreciseTimer);
+    _presentationTimer.setInterval(16);
+    connect(&_presentationTimer, &QTimer::timeout, this, [this]() {
+        updatePresentationAt(_clock.elapsed());
+    });
 }
 
 SimulationObjectManager::~SimulationObjectManager()
@@ -177,6 +212,7 @@ void SimulationObjectManager::_restart()
 void SimulationObjectManager::stop()
 {
     _cleanupTimer.stop();
+    _presentationTimer.stop();
     delete _socket;
     _socket = nullptr;
     _clearObjects();
@@ -192,6 +228,7 @@ void SimulationObjectManager::stop()
 
 void SimulationObjectManager::_clearObjects()
 {
+    _presentationTimer.stop();
     _entries.clear();
     _objects->clearAndDeleteContents();
 }
@@ -342,7 +379,19 @@ bool SimulationObjectManager::acceptDatagram(const QByteArray& bytes, const QHos
         qCDebug(SimulationObjectLog) << "Simulation object created" << packet.id << packet.kind;
     }
     object->_apply(packet, now);
+    if (packet.kind == QLatin1String("missile") && !_presentationTimer.isActive()) {
+        _presentationTimer.start();
+    }
     return true;
+}
+
+void SimulationObjectManager::updatePresentationAt(qint64 nowMs)
+{
+    for (SimulationObject* object : std::as_const(_entries)) {
+        if (object) {
+            object->_updatePresentation(nowMs);
+        }
+    }
 }
 
 void SimulationObjectManager::expireAt(qint64 nowMs)
@@ -371,6 +420,16 @@ void SimulationObjectManager::expireAt(qint64 nowMs)
             object->deleteLater();
         } else if (!completed && age >= stale) {
             object->_setLifecycle(sourceDisconnected ? QStringLiteral("disconnected") : QStringLiteral("stale"));
+        }
+    }
+    if (_presentationTimer.isActive()) {
+        const bool anyActiveMissile = std::any_of(_entries.cbegin(), _entries.cend(),
+            [](const SimulationObject* object) {
+                return object && object->_kind == QLatin1String("missile") &&
+                       object->_positionValid && object->_lifecycle == QLatin1String("active");
+            });
+        if (!anyActiveMissile) {
+            _presentationTimer.stop();
         }
     }
 }

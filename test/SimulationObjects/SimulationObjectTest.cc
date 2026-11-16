@@ -14,6 +14,7 @@
 #include "SettingsManager.h"
 #include "SimulationObjectManager.h"
 #include "SimulationObjectProtocol.h"
+#include "SimulationObjectPresentation.h"
 #include "SimulationObjectSettings.h"
 
 namespace {
@@ -472,6 +473,155 @@ void SimulationObjectTest::_headingFromCoordinates()
     // Do not infer a heading across an interval in which the position was invalid.
     QVERIFY(sendPosition(6, 56.9501, 24.1102, 5250000000));
     QCOMPARE_LT(std::abs(std::remainder(missile->heading() - 0.0, 360.0)), 0.01);
+}
+
+void SimulationObjectTest::_presentationInterpolation()
+{
+    SimulationObjectPresentation view;
+    const QGeoCoordinate a(56.95, 24.11, 100);
+    const QGeoCoordinate b = a.atDistanceAndAzimuth(100, 90);
+    QGeoCoordinate high = b;
+    high.setAltitude(200);
+
+    view.append(a, QStringLiteral("AMSL_EGM96"), 100000000, 0, 359, true,
+                false, 0, 0, 0, true);
+    view.append(high, QStringLiteral("AMSL_EGM96"), 200000000, 100, 1, true,
+                false, 0, 0, 0, true);
+
+    const auto first = view.sampleAt(100);  // Display time = 0 ms.
+    QCOMPARE(first.coordinate, a);
+    const auto middle = view.sampleAt(150); // Display time = 50 ms.
+    QVERIFY(middle.coordinate.isValid());
+    QCOMPARE_LT(std::abs(a.distanceTo(middle.coordinate) - 50), 0.1);
+    QCOMPARE_LT(std::abs(middle.coordinate.altitude() - 150), 0.001);
+    QCOMPARE_LT(std::abs(std::remainder(middle.heading, 360.0)), 0.001);
+    QCOMPARE(middle.simTimeNs, 150000000ULL);
+    const auto last = view.sampleAt(200);
+    QCOMPARE(last.simTimeNs, 200000000ULL);
+    QCOMPARE_LT(last.coordinate.distanceTo(high), 0.01);
+}
+
+void SimulationObjectTest::_presentationExtrapolationAndBoundaries()
+{
+    SimulationObjectPresentation view;
+    const QGeoCoordinate origin(56.95, 24.11, 100);
+    view.append(origin, QStringLiteral("AMSL_EGM96"), 0, 0, 0, true,
+                true, 10, 0, 2, true);
+
+    const auto hundred = view.sampleAt(200);  // 100 ms after packet in presentation time.
+    QCOMPARE_LT(std::abs(origin.distanceTo(hundred.coordinate) - 1.0), 0.1);
+    QCOMPARE_LT(std::abs(hundred.coordinate.altitude() - 99.8), 0.001);
+    QCOMPARE(hundred.simTimeNs, 100000000ULL);
+
+    const auto capped = view.sampleAt(400);
+    QCOMPARE_LT(std::abs(origin.distanceTo(capped.coordinate) - 2.0), 0.1);
+    QCOMPARE(capped.simTimeNs, 200000000ULL);
+    QCOMPARE(view.sampleAt(10000).coordinate, capped.coordinate);
+
+    view.append(origin, QStringLiteral("AMSL_EGM96"), 100000000, 100, 0, true,
+                true, 10, 0, 0, false); // Paused/stationary: no extrapolation.
+    QCOMPARE(view.sampleAt(400).coordinate, origin);
+
+    // No cross-datum interpolation; no interpolation over large packet gaps.
+    view.append(origin.atDistanceAndAzimuth(200, 90), QStringLiteral("WGS84_ELLIPSOID"),
+                200000000, 200, 90, true, false, 0, 0, 0, true);
+    QCOMPARE(view.sampleCount(), 1);
+
+    view.append(origin, QStringLiteral("WGS84_ELLIPSOID"), 300000000, 1200,
+                90, true, false, 0, 0, 0, true);
+    QCOMPARE(view.sampleCount(), 1);
+
+    // Simulation rewind or duplicate timestamp clears the presentation history.
+    view.append(origin, QStringLiteral("WGS84_ELLIPSOID"), 200000000, 1300,
+                90, true, false, 0, 0, 0, true);
+    QCOMPARE(view.sampleCount(), 1);
+
+    view.append(QGeoCoordinate(), QString(), 0, 1400, 0, false,
+                false, 0, 0, 0, false);
+    QCOMPARE(view.sampleCount(), 0);
+    QVERIFY(!view.sampleAt(1400).coordinate.isValid());
+
+    // Two simulation seconds per wall-clock second; velocity is expressed
+    // in simulated meters per simulated second.
+    view.append(origin, QStringLiteral("AMSL_EGM96"), 0, 2000, 0, true,
+                true, 10, 0, 0, true);
+    view.append(origin.atDistanceAndAzimuth(1, 0), QStringLiteral("AMSL_EGM96"),
+                200000000, 2100, 0, true, true, 10, 0, 0, true);
+    const auto fast = view.sampleAt(2250); // 50 ms * 2x => another meter.
+    QCOMPARE_LT(std::abs(origin.distanceTo(fast.coordinate) - 2), 0.1);
+    QCOMPARE(fast.simTimeNs, 300000000ULL);
+}
+
+void SimulationObjectTest::_presentationTenObjects()
+{
+    QVector<SimulationObjectPresentation> views(10);
+    for (int i = 0; i < 10; ++i) {
+        const QGeoCoordinate base(50 + i * 0.01, 10, 200);
+        views[i].append(base, QStringLiteral("AMSL_EGM96"), 100000000, 0,
+                        90, true, false, 0, 0, 0, true);
+        views[i].append(base.atDistanceAndAzimuth(80, 90), QStringLiteral("AMSL_EGM96"),
+                        200000000, 100, 91, true, false, 0, 0, 0, true);
+        const auto pose = views[i].sampleAt(150);
+        QCOMPARE_LT(std::abs(base.distanceTo(pose.coordinate) - 40), 0.1);
+        QCOMPARE(views[i].sampleCount(), 2);
+    }
+    views[0].clear();
+    QVERIFY(!views[0].sampleAt(150).coordinate.isValid());
+    QCOMPARE(views[1].sampleCount(), 2);
+}
+
+
+void SimulationObjectTest::_presentationLifecycleAndSessionReset()
+{
+    auto* settings = SettingsManager::instance()->simulationObjectSettings();
+    Fact* const enabled = settings->enabled();
+    const QVariant original = enabled->rawValue();
+    const auto restore = qScopeGuard([enabled, original]() { enabled->setRawValue(original); });
+    enabled->setRawValue(true);
+
+    SimulationObjectManager manager(settings);
+    const QHostAddress peer(QHostAddress::LocalHost);
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession1)), peer));
+    QVERIFY(manager.acceptDatagram(packet(state(kSession1, 1)), peer));
+    auto* missile = manager.objectFor(kSession1, 1, QStringLiteral("missile-1"), 1);
+    QVERIFY(missile);
+    QVERIFY(missile->renderCoordinate().isValid());
+    QCOMPARE(missile->renderSimTimeNs(), QStringLiteral("250000000"));
+
+    // A valid packet with position:null must immediately hide the marker/LOS,
+    // even if previous history is still buffered for the 100 ms delay.
+    QJsonObject missing = state(kSession1, 2);
+    missing.insert(QStringLiteral("sim_time_ns"), QStringLiteral("350000000"));
+    missing.insert(QStringLiteral("position"), QJsonValue::Null);
+    QVERIFY(manager.acceptDatagram(packet(missing), peer));
+    QVERIFY(!missile->positionValid());
+    QVERIFY(!missile->renderCoordinate().isValid());
+
+    QJsonObject resume = state(kSession1, 3);
+    resume.insert(QStringLiteral("sim_time_ns"), QStringLiteral("450000000"));
+    QVERIFY(manager.acceptDatagram(packet(resume), peer));
+    QVERIFY(missile->renderCoordinate().isValid());
+    QCOMPARE(missile->renderSimTimeNs(), QStringLiteral("450000000"));
+
+    QJsonObject completed = ended(kSession1, 4);
+    completed.insert(QStringLiteral("sim_time_ns"), QStringLiteral("550000000"));
+    QVERIFY(manager.acceptDatagram(packet(completed), peer));
+    QCOMPARE(missile->lifecycle(), QStringLiteral("completed"));
+    manager.updatePresentationAt(10000);
+    // A completed marker stays frozen; no late extrapolation/animation.
+    QCOMPARE(missile->renderSimTimeNs(), QStringLiteral("450000000"));
+
+    QJsonObject sessionEnd = envelope(kSession1, QStringLiteral("session_end"));
+    sessionEnd.insert(QStringLiteral("sim_time_ns"), QStringLiteral("600000000"));
+    QVERIFY(manager.acceptDatagram(packet(sessionEnd), peer));
+    QCOMPARE(manager.objects()->count(), 0);
+
+    QVERIFY(manager.acceptDatagram(packet(announce(kSession2)), peer));
+    QVERIFY(manager.acceptDatagram(packet(state(kSession2, 1)), peer));
+    auto* fresh = manager.objectFor(kSession2, 1, QStringLiteral("missile-1"), 1);
+    QVERIFY(fresh);
+    QVERIFY(fresh != missile);
+    QCOMPARE(fresh->renderSimTimeNs(), QStringLiteral("250000000"));
 }
 
 void SimulationObjectTest::_receiverStatus()

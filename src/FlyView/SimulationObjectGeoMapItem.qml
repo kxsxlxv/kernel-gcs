@@ -29,7 +29,7 @@ GeoMapItem {
         if (!simulationObject || !simulationObject.positionValid) {
             return QtPositioning.coordinate()
         }
-        const pos = simulationObject.coordinate
+        const pos = simulationObject.renderCoordinate
         return _hasAmslAltitude
             ? QtPositioning.coordinate(pos.latitude, pos.longitude, pos.altitude + homeTerrainBias)
             : QtPositioning.coordinate(pos.latitude, pos.longitude)
@@ -51,17 +51,17 @@ GeoMapItem {
         rangeValid: root.simulationObject ? root.simulationObject.rangeValid : false
         slantRangeM: root.simulationObject ? root.simulationObject.slantRangeM : NaN
         showLabel: root.showLabel
-        heading: root.simulationObject && root.simulationObject.headingValid
-                 ? root.simulationObject.heading + (root._camera ? root._camera.heading : 0) : 0
-        headingValid: root.simulationObject ? root.simulationObject.headingValid : false
+        heading: root.simulationObject && root.simulationObject.renderHeadingValid
+                 ? root.simulationObject.renderHeading + (root._camera ? root._camera.heading : 0) : 0
+        headingValid: root.simulationObject ? root.simulationObject.renderHeadingValid : false
         opacity: root.contentOpacity2D * root._statusOpacity
     }
 
     delegate3D: Component {
         Node {
             // Scene z is up; positive geographic heading is clockwise.
-            eulerRotation.z: root.simulationObject && root.simulationObject.headingValid
-                             ? -root.simulationObject.heading : 0
+            eulerRotation.z: root.simulationObject && root.simulationObject.renderHeadingValid
+                             ? -root.simulationObject.renderHeading : 0
             scale: Qt.vector3d(root._quadScale, root._quadScale, 1)
 
             Model {

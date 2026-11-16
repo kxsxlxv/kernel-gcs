@@ -51,6 +51,26 @@ void MapTrailHistory::append(const QGeoCoordinate& coordinate)
 
 void MapTrailHistory::appendAt(const QGeoCoordinate& coordinate, qint64 nowMs)
 {
+    _appendAt(coordinate, nowMs, 0, false);
+}
+
+void MapTrailHistory::appendWithSimTime(const QGeoCoordinate& coordinate, const QString& simTimeNs)
+{
+    bool ok = false;
+    const quint64 timestamp = simTimeNs.toULongLong(&ok);
+    if (ok) {
+        _appendAt(coordinate, _clock.elapsed(), timestamp, true);
+    }
+}
+
+void MapTrailHistory::appendStampedAt(const QGeoCoordinate& coordinate, qint64 nowMs, quint64 simTimeNs)
+{
+    _appendAt(coordinate, nowMs, simTimeNs, true);
+}
+
+void MapTrailHistory::_appendAt(const QGeoCoordinate& coordinate, qint64 nowMs,
+                                quint64 simTimeNs, bool stamped)
+{
     if (!_enabled || !coordinate.isValid()) {
         return;
     }
@@ -67,7 +87,7 @@ void MapTrailHistory::appendAt(const QGeoCoordinate& coordinate, qint64 nowMs)
         }
     }
     const bool isFirstSample = _samples.isEmpty();
-    _samples.append({coordinate, nowMs});
+    _samples.append({coordinate, nowMs, simTimeNs, stamped});
     if (isFirstSample) {
         _renderAnchor = coordinate;
         emit renderAnchorChanged();
@@ -160,6 +180,46 @@ QVariantList MapTrailHistory::fadeFactors() const
         const double alpha = _lifetimeMs > 0
             ? std::clamp(1.0 - (nowMs - _samples[i].timeMs) / static_cast<double>(_lifetimeMs), 0.0, 1.0)
             : (_samples.size() > 1 ? static_cast<double>(i + 1) / _samples.size() : 1.0);
+        result.append(alpha);
+    }
+    return result;
+}
+
+QVariantList MapTrailHistory::coordinatesThroughSimTime(const QString& simTimeNs) const
+{
+    QVariantList result;
+    bool ok = false;
+    const quint64 cutoff = simTimeNs.toULongLong(&ok);
+    if (!ok) {
+        return result;
+    }
+    result.reserve(_samples.size());
+    for (const Sample& sample : _samples) {
+        if (sample.stamped && sample.simTimeNs <= cutoff) {
+            result.append(QVariant::fromValue(sample.coordinate));
+        }
+    }
+    return result;
+}
+
+QVariantList MapTrailHistory::fadeFactorsThroughSimTime(const QString& simTimeNs) const
+{
+    QVariantList result;
+    bool ok = false;
+    const quint64 cutoff = simTimeNs.toULongLong(&ok);
+    if (!ok) {
+        return result;
+    }
+    const qint64 nowMs = _clock.elapsed();
+    const qsizetype count = _samples.size();
+    for (qsizetype i = 0; i < count; ++i) {
+        const Sample& sample = _samples[i];
+        if (!sample.stamped || sample.simTimeNs > cutoff) {
+            continue;
+        }
+        const double alpha = _lifetimeMs > 0
+            ? std::clamp(1.0 - (nowMs - sample.timeMs) / static_cast<double>(_lifetimeMs), 0.0, 1.0)
+            : (count > 1 ? static_cast<double>(i + 1) / count : 1.0);
         result.append(alpha);
     }
     return result;

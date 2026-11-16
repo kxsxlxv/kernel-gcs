@@ -15,7 +15,7 @@ MapPolyline {
     }
 
     path: endpoints.drawable
-          ? [root.simulationObject.coordinate, endpoints.targetVehicle.coordinate] : []
+          ? [root.simulationObject.renderCoordinate, endpoints.targetVehicle.coordinate] : []
     visible: endpoints.drawable
     line.color: "#80cfff"
     line.width: 2
