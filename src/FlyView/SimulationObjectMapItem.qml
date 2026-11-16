@@ -15,7 +15,7 @@ MapQuickItem {
     property bool showLabel: true
 
     coordinate: simulationObject && simulationObject.positionValid
-                ? simulationObject.coordinate : QtPositioning.coordinate()
+                ? simulationObject.renderCoordinate : QtPositioning.coordinate()
     visible: simulationObject && simulationObject.kind === "missile" && simulationObject.positionValid
              && coordinate.isValid
     anchorPoint.x: marker.width / 2
@@ -30,8 +30,8 @@ MapQuickItem {
         rangeValid: root.simulationObject ? root.simulationObject.rangeValid : false
         slantRangeM: root.simulationObject ? root.simulationObject.slantRangeM : NaN
         showLabel: root.showLabel
-        heading: root.simulationObject ? root.simulationObject.heading : 0
-        headingValid: root.simulationObject ? root.simulationObject.headingValid : false
+        heading: root.simulationObject ? root.simulationObject.renderHeading : 0
+        headingValid: root.simulationObject ? root.simulationObject.renderHeadingValid : false
         opacity: lifecycle === "active" ? 1 : lifecycle === "completed" ? 0.35 : 0.55
     }
 }

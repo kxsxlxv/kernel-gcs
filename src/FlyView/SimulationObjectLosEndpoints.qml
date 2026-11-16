@@ -23,7 +23,7 @@ QtObject {
         const object = root.simulationObject
         const target = root.targetVehicle
         return !!object && object.kind === "missile" && object.lifecycle === "active"
-               && object.positionValid && object.coordinate.isValid && !!target
+               && object.positionValid && object.renderCoordinate.isValid && !!target
                && target.coordinate.isValid
     }
 }

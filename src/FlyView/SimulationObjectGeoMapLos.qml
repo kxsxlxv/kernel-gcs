@@ -22,7 +22,7 @@ GeoMapItem {
         if (!endpoints.drawable) {
             return []
         }
-        const missile = simulationObject.coordinate
+        const missile = simulationObject.renderCoordinate
         const target = endpoints.targetVehicle.coordinate
         let missileHeight = missile.altitude + root.missileHomeTerrainBias
         if (simulationObject.altitudeDatum !== "AMSL_EGM96") {
